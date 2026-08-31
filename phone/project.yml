@@ -1,0 +1,33 @@
+name: OpoyoPhone
+options:
+  bundleIdPrefix: com.dewa
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    DEVELOPMENT_TEAM: 75S8T7C73V
+    CODE_SIGN_STYLE: Automatic
+    SWIFT_VERSION: "5.0"
+targets:
+  OpoyoPhone:
+    type: application
+    platform: iOS
+    sources:
+      - path: OpoyoPhone
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.dewa.opoyo
+        DEVELOPMENT_TEAM: 75S8T7C73V
+        CODE_SIGN_STYLE: Automatic
+        PRODUCT_NAME: OPOYO
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: OPOYO
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: OPOYO measures sound level as the acoustic channel for the floor-sensor prototype. Only a single decibel number is sent to your Mac.
+        INFOPLIST_KEY_NSLocalNetworkUsageDescription: OPOYO sends accelerometer and sound-level samples to the Mac dashboard on your local network.
+        TARGETED_DEVICE_FAMILY: "1"
+        IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+        SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD: NO
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO

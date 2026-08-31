@@ -1,0 +1,54 @@
+/* Hallmark · macrostructure: Workbench · tone: austere · anchor hue: indigo
+ * theme: custom (vibe: "kawung cloth, night watch" · paper oklch(93% 0.025 85) · accent oklch(32% 0.055 258) indigo · Iowan Old Style + Avenir Next)
+ * audience: demo operators and judges · use: read live floor signal · genre: editorial
+ * Hallmark · pre-emit critique: P4 H4 E4 S4 R4 V4
+ */
+
+:root {
+  --color-paper: oklch(93.4% 0.025 85);
+  --color-resist: oklch(97.2% 0.012 90);
+  --color-ink: oklch(24% 0.032 50);
+  --color-muted: oklch(46% 0.028 52);
+  --color-line: oklch(82% 0.022 80);
+  --color-indigo: oklch(32% 0.055 258);
+  --color-soga: oklch(48% 0.09 48);
+  --color-wax: oklch(88% 0.03 82);
+  --color-live: oklch(42% 0.08 145);
+  --color-wait: oklch(48% 0.04 70);
+  --color-focus: oklch(40% 0.08 258);
+  --font-display: "Iowan Old Style", Palatino, "Palatino Linotype", "New York", Georgia, serif;
+  --font-body: "Avenir Next", "Segoe UI", sans-serif;
+  --font-mono: "SF Mono", ui-monospace, Menlo, monospace;
+  --text-display: 2.75rem;
+  --text-xl: 1.35rem;
+  --text-md: 1rem;
+  --text-sm: 0.8125rem;
+  --text-xs: 0.6875rem;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --radius: 2px;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur: 180ms;
+  --rule: 1px;
+  --kawung: url("/static/kawung.svg");
+}
+
+html[data-theme="night"] {
+  --color-paper: oklch(18% 0.02 50);
+  --color-resist: oklch(22% 0.018 48);
+  --color-ink: oklch(93% 0.025 85);
+  --color-muted: oklch(72% 0.03 80);
+  --color-line: oklch(32% 0.02 55);
+  --color-indigo: oklch(78% 0.05 85);
+  --color-soga: oklch(68% 0.1 48);
+  --color-wax: oklch(26% 0.02 50);
+  --color-live: oklch(72% 0.1 145);
+  --color-wait: oklch(70% 0.04 80);
+  --color-focus: oklch(82% 0.05 85);
+  --kawung: url("/static/kawung-night.svg");
+}

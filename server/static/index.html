@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OPOYO</title>
+  <link rel="stylesheet" href="/static/tokens.css">
+  <style>
+    html, body { overflow-x: clip; }
+    * { box-sizing: border-box; }
+    html { color-scheme: light; }
+    html[data-theme="night"] { color-scheme: dark; }
+    body {
+      margin: 0;
+      min-height: 100dvh;
+      background-color: var(--color-paper);
+      background-image: var(--kawung);
+      background-size: 72px 72px;
+      color: var(--color-ink);
+      font-family: var(--font-body);
+      font-size: var(--text-md);
+      line-height: 1.45;
+    }
+    ::selection { background: var(--color-indigo); color: var(--color-resist); }
+    :focus-visible {
+      outline: 3px solid var(--color-focus);
+      outline-offset: 3px;
+    }
+    .shell {
+      min-height: 100dvh;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      background: color-mix(in oklab, var(--color-paper) 88%, transparent);
+    }
+    header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: var(--space-4);
+      padding: var(--space-6) var(--space-8) var(--space-4);
+      border-bottom: var(--rule) solid var(--color-line);
+    }
+    h1 {
+      margin: 0;
+      font-family: var(--font-display);
+      font-style: normal;
+      font-weight: 500;
+      font-size: var(--text-display);
+      letter-spacing: -0.03em;
+      line-height: 1;
+    }
+    .actions { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+    button {
+      font-family: var(--font-body);
+      font-size: var(--text-sm);
+      color: var(--color-ink);
+      background: var(--color-resist);
+      border: var(--rule) solid var(--color-ink);
+      border-radius: var(--radius);
+      padding: 10px 14px;
+      min-height: 44px;
+      cursor: pointer;
+      transition: background var(--dur) var(--ease-out), color var(--dur) var(--ease-out);
+    }
+    button:hover, button.is-hover { background: var(--color-wax); }
+    button:active, button.is-active { transform: translateY(1px); }
+    button[aria-pressed="true"] {
+      background: var(--color-indigo);
+      color: var(--color-resist);
+      border-color: var(--color-indigo);
+    }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    .stage {
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1fr);
+      min-height: 0;
+    }
+    aside {
+      padding: var(--space-6) var(--space-6) var(--space-8);
+      border-right: var(--rule) solid var(--color-line);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-6);
+    }
+    .status {
+      font-family: var(--font-display);
+      font-style: normal;
+      font-size: 1.6rem;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+    }
+    .status[data-live="true"] { color: var(--color-indigo); }
+    .note { color: var(--color-muted); font-size: var(--text-sm); margin: 0; }
+    dl { margin: 0; display: grid; gap: var(--space-3); }
+    dt {
+      font-size: var(--text-xs);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+    }
+    dd {
+      margin: 2px 0 0;
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      font-size: var(--text-xl);
+    }
+    .plots {
+      padding: var(--space-5) var(--space-8) var(--space-8);
+      display: grid;
+      grid-template-rows: 1fr 1fr;
+      gap: var(--space-5);
+      min-width: 0;
+    }
+    figure {
+      margin: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    figcaption {
+      font-size: var(--text-xs);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      margin-bottom: var(--space-2);
+    }
+    canvas {
+      width: 100%;
+      flex: 1;
+      min-height: 140px;
+      background: var(--color-resist);
+      border: var(--rule) solid var(--color-line);
+      display: block;
+    }
+    footer {
+      display: flex;
+      justify-content: space-between;
+      gap: var(--space-4);
+      padding: var(--space-4) var(--space-8);
+      border-top: var(--rule) solid var(--color-line);
+      color: var(--color-muted);
+      font-size: var(--text-sm);
+    }
+    footer p { margin: 0; }
+    @media (max-width: 768px) {
+      header, .plots, footer, aside { padding-left: var(--space-4); padding-right: var(--space-4); }
+      .stage { grid-template-columns: 1fr; }
+      aside {
+        border-right: 0;
+        border-bottom: var(--rule) solid var(--color-line);
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: var(--space-4);
+      }
+      h1 { font-size: 2rem; overflow-wrap: anywhere; min-width: 0; }
+      dl { grid-template-columns: 1fr 1fr; width: 100%; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      button { transition: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <h1>OPOYO</h1>
+      <div class="actions">
+        <button type="button" id="pause" aria-pressed="false">Pause</button>
+        <button type="button" id="theme">Night</button>
+      </div>
+    </header>
+    <div class="stage">
+      <aside>
+        <div>
+          <div class="status" id="status" data-live="false">Waiting</div>
+          <p class="note" id="meta">UDP 9000. No packets yet.</p>
+        </div>
+        <dl>
+          <div>
+            <dt>Magnitude</dt>
+            <dd id="mag">-</dd>
+          </div>
+          <div>
+            <dt>Sound</dt>
+            <dd id="db">-</dd>
+          </div>
+          <div>
+            <dt>Rate</dt>
+            <dd id="hz">0 Hz</dd>
+          </div>
+          <div>
+            <dt>Packets</dt>
+            <dd id="n">0</dd>
+          </div>
+        </dl>
+        <p class="note">ax <span id="ax">-</span> &nbsp; ay <span id="ay">-</span> &nbsp; az <span id="az">-</span></p>
+      </aside>
+      <div class="plots">
+        <figure>
+          <figcaption>User acceleration (g)</figcaption>
+          <canvas id="magChart" width="1100" height="280" aria-label="Live acceleration trace"></canvas>
+        </figure>
+        <figure>
+          <figcaption>Sound level (dB)</figcaption>
+          <canvas id="dbChart" width="1100" height="280" aria-label="Live sound-level trace"></canvas>
+        </figure>
+      </div>
+    </div>
+    <footer>
+      <p>Phone is a proxy. Product is a floor puck.</p>
+      <p id="foot">No model. Signal only.</p>
+    </footer>
+  </div>
+  <script>
+    const magBuf = [];
+    const dbBuf = [];
+    const MAX = 220;
+    const magEl = document.getElementById("mag");
+    const dbEl = document.getElementById("db");
+    const hzEl = document.getElementById("hz");
+    const nEl = document.getElementById("n");
+    const metaEl = document.getElementById("meta");
+    const statusEl = document.getElementById("status");
+    const magCanvas = document.getElementById("magChart");
+    const dbCanvas = document.getElementById("dbChart");
+    const pauseBtn = document.getElementById("pause");
+    const themeBtn = document.getElementById("theme");
+    let paused = false;
+    let lastRecv = 0;
+
+    function ink() {
+      return getComputedStyle(document.body).getPropertyValue("--color-indigo").trim() || "#1e2f4f";
+    }
+    function soga() {
+      return getComputedStyle(document.body).getPropertyValue("--color-soga").trim() || "#8b4b28";
+    }
+
+    function applyTheme(name) {
+      const night = name === "night";
+      document.documentElement.setAttribute("data-theme", night ? "night" : "cloth");
+      themeBtn.textContent = night ? "Cloth" : "Night";
+      try { localStorage.setItem("opoyo-theme", night ? "night" : "cloth"); } catch (e) {}
+    }
+    applyTheme((() => {
+      try { return localStorage.getItem("opoyo-theme") || "cloth"; } catch (e) { return "cloth"; }
+    })());
+    themeBtn.addEventListener("click", () => {
+      applyTheme(document.documentElement.getAttribute("data-theme") === "night" ? "cloth" : "night");
+    });
+    pauseBtn.addEventListener("click", () => {
+      paused = !paused;
+      pauseBtn.setAttribute("aria-pressed", paused ? "true" : "false");
+      pauseBtn.textContent = paused ? "Resume" : "Pause";
+    });
+
+    function draw(canvas, values, min, max, stroke) {
+      const ctx = canvas.getContext("2d");
+      const w = canvas.width;
+      const h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+      if (values.length < 2) return;
+      ctx.beginPath();
+      values.forEach((v, i) => {
+        const x = (i / (MAX - 1)) * w;
+        const y = h - ((v - min) / (max - min || 1)) * (h - 8) - 4;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.lineTo(w, h);
+      ctx.lineTo(0, h);
+      ctx.closePath();
+      ctx.fillStyle = stroke;
+      ctx.globalAlpha = 0.12;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.beginPath();
+      values.forEach((v, i) => {
+        const x = (i / (MAX - 1)) * w;
+        const y = h - ((v - min) / (max - min || 1)) * (h - 8) - 4;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = 1.6;
+      ctx.stroke();
+    }
+
+    function fmt(n, digits) {
+      return typeof n === "number" && isFinite(n) ? n.toFixed(digits) : "-";
+    }
+
+    function setLive(on) {
+      statusEl.dataset.live = on ? "true" : "false";
+      statusEl.textContent = on ? "Live" : "Waiting";
+    }
+
+    function push(p) {
+      if (paused || typeof p.mag !== "number") return;
+      lastRecv = performance.now();
+      magEl.textContent = fmt(p.mag, 3) + " g";
+      dbEl.textContent = fmt(p.db, 1) + " dB";
+      document.getElementById("ax").textContent = fmt(p.ax, 3);
+      document.getElementById("ay").textContent = fmt(p.ay, 3);
+      document.getElementById("az").textContent = fmt(p.az, 3);
+      magBuf.push(p.mag);
+      dbBuf.push(typeof p.db === "number" ? p.db : -120);
+      while (magBuf.length > MAX) magBuf.shift();
+      while (dbBuf.length > MAX) dbBuf.shift();
+      metaEl.textContent = (p.from || "phone") + "  ·  t " + (p.t || "-");
+      const magMax = Math.max(0.4, ...magBuf);
+      draw(magCanvas, magBuf, 0, magMax, ink());
+      draw(dbCanvas, dbBuf, -80, 0, soga());
+    }
+
+    function connect() {
+      const proto = location.protocol === "https:" ? "wss" : "ws";
+      const ws = new WebSocket(proto + "://" + location.host + "/ws");
+      ws.onmessage = (ev) => {
+        let p;
+        try { p = JSON.parse(ev.data); } catch (e) { return; }
+        if (p && p.latest) {
+          nEl.textContent = String(p.packets || 0);
+          hzEl.textContent = (p.hz ?? 0) + " Hz";
+          if (p.latest) push(p.latest);
+          return;
+        }
+        push(p);
+      };
+      ws.onclose = () => setTimeout(connect, 1000);
+    }
+    connect();
+
+    setInterval(async () => {
+      try {
+        const r = await fetch("/api/state");
+        const s = await r.json();
+        nEl.textContent = String(s.packets ?? 0);
+        hzEl.textContent = (s.hz ?? 0) + " Hz";
+        const age = performance.now() - lastRecv;
+        setLive((s.hz || 0) > 2 && age < 2500);
+        if ((s.hz || 0) === 0 && age > 2500) setLive(false);
+      } catch (e) {
+        setLive(false);
+      }
+    }, 400);
+  </script>
+</body>
+</html>

@@ -1,0 +1,345 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		65021A50BE1475E64940D04E /* DbMeter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0577571B9793F714A9EDE66 /* DbMeter.swift */; };
+		78FE133EAE37D732405EFA41 /* UDPClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F816D3A51C3584C6D0CEBED3 /* UDPClient.swift */; };
+		9D1639B14FE8E60220D7BC57 /* SensorSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD5BEB7479AB1A2F91E532B7 /* SensorSession.swift */; };
+		9E3433E88425871048C596D8 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200AD61CEAB0C96E401CE5FA /* ContentView.swift */; };
+		B727F0EDF89155B7B83EC9B8 /* Cloth.swift in Sources */ = {isa = PBXBuildFile; fileRef = 247CA35AB70A33565B6F8A5A /* Cloth.swift */; };
+		E9ED44773CAFB6A03D2AD181 /* OpoyoPhoneApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E13C63405A56EDE63A96CAD /* OpoyoPhoneApp.swift */; };
+		FC99A5EB09576E01934560F1 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = FCA1349E8AD788CEE58EAC0F /* Assets.xcassets */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		200AD61CEAB0C96E401CE5FA /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		247CA35AB70A33565B6F8A5A /* Cloth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Cloth.swift; sourceTree = "<group>"; };
+		32FBE4CD126B761DEFC581E3 /* OpoyoPhone.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = OpoyoPhone.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		7E13C63405A56EDE63A96CAD /* OpoyoPhoneApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpoyoPhoneApp.swift; sourceTree = "<group>"; };
+		CD5BEB7479AB1A2F91E532B7 /* SensorSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SensorSession.swift; sourceTree = "<group>"; };
+		D0577571B9793F714A9EDE66 /* DbMeter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DbMeter.swift; sourceTree = "<group>"; };
+		F816D3A51C3584C6D0CEBED3 /* UDPClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UDPClient.swift; sourceTree = "<group>"; };
+		FCA1349E8AD788CEE58EAC0F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		184E73A775753B91788A2906 /* OpoyoPhone */ = {
+			isa = PBXGroup;
+			children = (
+				FCA1349E8AD788CEE58EAC0F /* Assets.xcassets */,
+				247CA35AB70A33565B6F8A5A /* Cloth.swift */,
+				200AD61CEAB0C96E401CE5FA /* ContentView.swift */,
+				D0577571B9793F714A9EDE66 /* DbMeter.swift */,
+				7E13C63405A56EDE63A96CAD /* OpoyoPhoneApp.swift */,
+				CD5BEB7479AB1A2F91E532B7 /* SensorSession.swift */,
+				F816D3A51C3584C6D0CEBED3 /* UDPClient.swift */,
+			);
+			path = OpoyoPhone;
+			sourceTree = "<group>";
+		};
+		7089B28C3F631EB00A6143A0 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				32FBE4CD126B761DEFC581E3 /* OpoyoPhone.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		B66ABB4AD64454D315D7BFD1 = {
+			isa = PBXGroup;
+			children = (
+				184E73A775753B91788A2906 /* OpoyoPhone */,
+				7089B28C3F631EB00A6143A0 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A894CD3E0AC744596D7C8280 /* OpoyoPhone */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 19C87490968CC1A0ED6052FD /* Build configuration list for PBXNativeTarget "OpoyoPhone" */;
+			buildPhases = (
+				A87E261545026BA71667F2AB /* Sources */,
+				FE0ABBF545F6DB26D732669A /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = OpoyoPhone;
+			packageProductDependencies = (
+			);
+			productName = OpoyoPhone;
+			productReference = 32FBE4CD126B761DEFC581E3 /* OpoyoPhone.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		31BDC967389F7F6B9D667F4D /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					A894CD3E0AC744596D7C8280 = {
+						DevelopmentTeam = 75S8T7C73V;
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 178B75ED545CB4439DF836C4 /* Build configuration list for PBXProject "OpoyoPhone" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = B66ABB4AD64454D315D7BFD1;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 7089B28C3F631EB00A6143A0 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A894CD3E0AC744596D7C8280 /* OpoyoPhone */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		FE0ABBF545F6DB26D732669A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FC99A5EB09576E01934560F1 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A87E261545026BA71667F2AB /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B727F0EDF89155B7B83EC9B8 /* Cloth.swift in Sources */,
+				9E3433E88425871048C596D8 /* ContentView.swift in Sources */,
+				65021A50BE1475E64940D04E /* DbMeter.swift in Sources */,
+				E9ED44773CAFB6A03D2AD181 /* OpoyoPhoneApp.swift in Sources */,
+				9D1639B14FE8E60220D7BC57 /* SensorSession.swift in Sources */,
+				78FE133EAE37D732405EFA41 /* UDPClient.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		5953EA4E14AEEFCD21403F39 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 75S8T7C73V;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = OPOYO;
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "OPOYO sends accelerometer and sound-level samples to the Mac dashboard on your local network.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "OPOYO measures sound level as the acoustic channel for the floor-sensor prototype. Only a single decibel number is sent to your Mac.";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.dewa.opoyo;
+				PRODUCT_NAME = OPOYO;
+				SDKROOT = iphoneos;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		68176DF294935559E990640E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 75S8T7C73V;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = OPOYO;
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "OPOYO sends accelerometer and sound-level samples to the Mac dashboard on your local network.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "OPOYO measures sound level as the acoustic channel for the floor-sensor prototype. Only a single decibel number is sent to your Mac.";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.dewa.opoyo;
+				PRODUCT_NAME = OPOYO;
+				SDKROOT = iphoneos;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		873506E5B2C7593502E9BE83 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 75S8T7C73V;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		E307D961253ECF739290EA61 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 75S8T7C73V;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		178B75ED545CB4439DF836C4 /* Build configuration list for PBXProject "OpoyoPhone" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				873506E5B2C7593502E9BE83 /* Debug */,
+				E307D961253ECF739290EA61 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		19C87490968CC1A0ED6052FD /* Build configuration list for PBXNativeTarget "OpoyoPhone" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5953EA4E14AEEFCD21403F39 /* Debug */,
+				68176DF294935559E990640E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 31BDC967389F7F6B9D667F4D /* Project object */;
+}

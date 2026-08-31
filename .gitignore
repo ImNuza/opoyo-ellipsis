@@ -1,0 +1,15 @@
+.DS_Store
+.env
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.idea/
+.vscode/
+phone/DerivedData/
+phone/build/
+*.xcuserstate
+xcuserdata/
+data/
+models/
