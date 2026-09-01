@@ -139,6 +139,13 @@ def test_short_decay_records_reject():
     assert det.last_reject.startswith("decay")
 
 
+def test_simple_smash_triggers_without_shape():
+    det = Detector(_cfg(simple=True, peak_g=0.2, min_peak_samples=1))
+    mags = [0.01] * 20 + [0.05, 0.9, 0.4, 0.01] + [0.01] * 8
+    changes = _feed(det, mags)
+    assert any(c["state"] == "suspect" for c in changes)
+
+
 def test_cancel_does_nothing_when_quiet():
     det = Detector(_cfg())
     _feed(det, [0.01] * 10)

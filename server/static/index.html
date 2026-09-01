@@ -280,6 +280,24 @@
       font-family: var(--font-mono);
       font-size: var(--text-sm);
       padding: 8px 10px;
+      pointer-events: auto;
+    }
+    .tune input[type="checkbox"] {
+      width: 1.25rem;
+      min-height: 1.25rem;
+      accent-color: var(--color-navy);
+      cursor: pointer;
+    }
+    .tune label.check {
+      flex-direction: row;
+      align-items: center;
+      gap: 8px;
+      min-height: 40px;
+      cursor: pointer;
+    }
+    .tune button {
+      pointer-events: auto;
+      cursor: pointer;
     }
     .tune #tuneNote {
       font-family: var(--font-mono);
@@ -350,7 +368,9 @@
         </div>
         <div class="tune">
           <label>Peak g<input id="peakG" type="number" min="0.05" max="3" step="0.05" value="0.40"></label>
+          <label>Rise max ms<input id="riseMs" type="number" min="20" max="800" step="10" value="80"></label>
           <label>Decay min ms<input id="decayMin" type="number" min="20" max="400" step="10" value="150"></label>
+          <label class="check">Smash<input id="simpleMode" type="checkbox" checked></label>
           <button type="button" id="applyTune">Apply</button>
           <span id="tuneNote">Last hit and why it was rejected show here.</span>
         </div>
@@ -485,7 +505,9 @@
     let dropped = 0;
     let combined = { mag: 0, db: -120, live: 0, hz: 0, packets: 0 };
     let lastRecv = 0;
-    let detect = { state: "quiet", banner: "Quiet", remaining_s: 0 };
+    let detect = { state: "quiet", banner: "Quiet", remaining_s: 0, cfg: {} };
+    let tuneDirty = false;
+    let tuneLocked = false;
 
     const pauseBtn = document.getElementById("pause");
     const themeBtn = document.getElementById("theme");
@@ -496,7 +518,9 @@
     const bannerText = document.getElementById("bannerText");
     const cancelBtn = document.getElementById("cancelBtn");
     const peakGEl = document.getElementById("peakG");
+    const riseMsEl = document.getElementById("riseMs");
     const decayMinEl = document.getElementById("decayMin");
+    const simpleEl = document.getElementById("simpleMode");
     const applyTune = document.getElementById("applyTune");
     const tuneNote = document.getElementById("tuneNote");
 
@@ -696,22 +720,34 @@
       draw(document.getElementById("cDb"), buf.db, -80, 0, tan(), "dB");
     }
 
+    function fillTune(cfg, force) {
+      if (!cfg) return;
+      if (!force && (tuneDirty || tuneLocked)) return;
+      if (typeof cfg.peak_g === "number") peakGEl.value = String(cfg.peak_g);
+      if (typeof cfg.rise_ms === "number") riseMsEl.value = String(cfg.rise_ms);
+      if (typeof cfg.decay_min_ms === "number") decayMinEl.value = String(cfg.decay_min_ms);
+      if (typeof cfg.simple === "boolean") simpleEl.checked = cfg.simple;
+      tuneLocked = true;
+    }
+
     function applyDetect(d) {
       if (!d || !d.state) return;
       detect = d;
       bannerEl.setAttribute("data-state", d.state);
       bannerText.textContent = d.banner || "Quiet";
       footEl.textContent = "Dropped extras: " + dropped + ". Rule: " + (d.state || "quiet") + ".";
-      const cfg = d.cfg || {};
-      const peakFocused = document.activeElement === peakGEl || document.activeElement === decayMinEl;
-      if (!peakFocused) {
-        if (typeof cfg.peak_g === "number") peakGEl.value = String(cfg.peak_g);
-        if (typeof cfg.decay_min_ms === "number") decayMinEl.value = String(cfg.decay_min_ms);
-      }
+      fillTune(d.cfg || {});
       const hit = typeof d.last_hit_g === "number" ? d.last_hit_g.toFixed(3) + " g" : "-";
       const why = d.last_reject ? " · " + d.last_reject : "";
       tuneNote.textContent = "Last hit " + hit + why;
     }
+
+    [peakGEl, riseMsEl, decayMinEl, simpleEl].forEach((el) => {
+      el.addEventListener("pointerdown", () => { tuneDirty = true; });
+      el.addEventListener("input", () => { tuneDirty = true; });
+      el.addEventListener("change", () => { tuneDirty = true; });
+    });
+    applyTune.addEventListener("pointerdown", () => { tuneDirty = true; });
 
     applyTune.addEventListener("click", async () => {
       try {
@@ -720,10 +756,18 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             peak_g: Number(peakGEl.value),
-            decay_min_ms: Number(decayMinEl.value)
+            rise_ms: Number(riseMsEl.value),
+            decay_min_ms: Number(decayMinEl.value),
+            simple: simpleEl.checked
           })
         });
         const d = await r.json();
+        if (!r.ok) {
+          tuneNote.textContent = "Apply failed";
+          return;
+        }
+        tuneDirty = false;
+        fillTune(d.cfg || {}, true);
         applyDetect(d);
       } catch (e) {}
     });

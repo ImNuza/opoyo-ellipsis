@@ -181,6 +181,7 @@ class Hub:
                     "recover_g": cfg.recover_g,
                     "recover_after_ms": cfg.recover_after_ms,
                     "escalate_s": cfg.escalate_s,
+                    "simple": cfg.simple,
                 },
                 indent=2,
             )
@@ -431,6 +432,7 @@ class DetectConfigBody(BaseModel):
     decay_max_ms: float | None = None
     rise_ms: float | None = None
     min_peak_samples: int | None = None
+    simple: bool | None = None
 
 
 hub = Hub()
@@ -485,9 +487,11 @@ async def detect_config(body: DetectConfigBody) -> dict[str, Any]:
     if body.decay_max_ms is not None:
         updates["decay_max_ms"] = min(2000.0, max(80.0, float(body.decay_max_ms)))
     if body.rise_ms is not None:
-        updates["rise_ms"] = min(400.0, max(20.0, float(body.rise_ms)))
+        updates["rise_ms"] = min(800.0, max(20.0, float(body.rise_ms)))
     if body.min_peak_samples is not None:
         updates["min_peak_samples"] = min(5, max(1, int(body.min_peak_samples)))
+    if body.simple is not None:
+        updates["simple"] = bool(body.simple)
     return await hub.set_detect_config(updates)
 
 

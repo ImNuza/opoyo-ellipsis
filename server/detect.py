@@ -19,6 +19,7 @@ class DetectorConfig:
     escalate_s: float = 10.0
     cooldown_s: float = 2.0
     buffer_s: float = 1.2
+    simple: bool = False
 
 
 @dataclass
@@ -164,6 +165,7 @@ class Detector:
                 "recover_g": self.cfg.recover_g,
                 "recover_after_ms": self.cfg.recover_after_ms,
                 "escalate_s": self.cfg.escalate_s,
+                "simple": self.cfg.simple,
             },
         }
 
@@ -215,10 +217,24 @@ class Detector:
             )
             return None
 
+        if self.cfg.simple:
+            self._armed_peak_t = peak_t
+            return FallEvent(
+                id=str(uuid4())[:8],
+                t0=peak_t,
+                peak_g=peak_mag,
+                rise_ms=0.0,
+                decay_ms=0.0,
+                node_id=peak_nid or self.last_node,
+                state="suspect",
+                remaining_s=self.cfg.escalate_s,
+            )
+
         k = peak_i
         while k > 0 and samples[k][1] >= self.cfg.quiet_g:
             k -= 1
         if samples[k][1] >= self.cfg.quiet_g:
+            self.last_reject = "no quiet before peak"
             return None
         rise_ms = (peak_t - samples[k][0]) * 1000.0
         if not (0.0 < rise_ms <= self.cfg.rise_ms):
