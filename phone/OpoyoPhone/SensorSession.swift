@@ -15,6 +15,9 @@ final class SensorSession {
     var decibels: Double = -120
     var packetsSent = 0
     var status: String = "Idle"
+    let nodeId = DeviceIdentity.nodeId
+    let shortId = DeviceIdentity.shortId
+    let modelName = DeviceIdentity.modelName
 
     private let motion = CMMotionManager()
     private let engine = AVAudioEngine()
@@ -130,7 +133,7 @@ final class SensorSession {
 
         let t = Int(Date().timeIntervalSince1970 * 1000)
         let payload =
-            "{\"v\":1,\"t\":\(t),\"ax\":\(fmt(ua.x)),\"ay\":\(fmt(ua.y)),\"az\":\(fmt(ua.z)),\"mag\":\(fmt(mag)),\"db\":\(fmt(db))}"
+            "{\"v\":2,\"id\":\"\(esc(nodeId))\",\"model\":\"\(esc(modelName))\",\"t\":\(t),\"ax\":\(fmt(ua.x)),\"ay\":\(fmt(ua.y)),\"az\":\(fmt(ua.z)),\"mag\":\(fmt(mag)),\"db\":\(fmt(db))}"
         if let bytes = payload.data(using: .utf8) {
             client.send(bytes)
             packetsSent += 1
@@ -139,5 +142,11 @@ final class SensorSession {
 
     private func fmt(_ value: Double) -> String {
         String(format: "%.4f", value)
+    }
+
+    private func esc(_ value: String) -> String {
+        value
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
     }
 }

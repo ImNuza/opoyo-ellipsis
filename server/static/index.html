@@ -13,15 +13,13 @@
     body {
       margin: 0;
       min-height: 100dvh;
-      background-color: var(--color-paper);
-      background-image: var(--kawung);
-      background-size: 72px 72px;
+      background: var(--color-paper);
       color: var(--color-ink);
       font-family: var(--font-body);
       font-size: var(--text-md);
       line-height: 1.45;
     }
-    ::selection { background: var(--color-indigo); color: var(--color-resist); }
+    ::selection { background: var(--color-navy); color: var(--color-resist); }
     :focus-visible {
       outline: 3px solid var(--color-focus);
       outline-offset: 3px;
@@ -30,27 +28,53 @@
       min-height: 100dvh;
       display: grid;
       grid-template-rows: auto 1fr auto;
-      background: color-mix(in oklab, var(--color-paper) 88%, transparent);
     }
-    header {
+    header.mast {
       display: flex;
-      align-items: baseline;
+      align-items: center;
       justify-content: space-between;
       gap: var(--space-4);
-      padding: var(--space-6) var(--space-8) var(--space-4);
-      border-bottom: var(--rule) solid var(--color-line);
+      padding: 14px var(--space-8);
+      background-color: var(--color-header);
+      background-image: var(--header-batik);
+      background-size: 72px 36px;
+      color: var(--color-on-header);
+      border-bottom: var(--rule) solid color-mix(in srgb, var(--color-tan) 55%, transparent);
     }
-    h1 {
-      margin: 0;
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+      color: inherit;
+      text-decoration: none;
+    }
+    .brand img { width: 56px; height: 40px; flex: none; }
+    .wordmark {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+    .wordmark strong {
       font-family: var(--font-display);
       font-style: normal;
-      font-weight: 500;
-      font-size: var(--text-display);
-      letter-spacing: -0.03em;
+      font-weight: 700;
+      font-size: 1.55rem;
+      letter-spacing: 0.18em;
       line-height: 1;
     }
+    .wordmark span {
+      font-size: 0.68rem;
+      letter-spacing: 0.12em;
+      text-transform: none;
+      color: var(--color-tan);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
     .actions { display: flex; gap: var(--space-2); flex-wrap: wrap; }
-    button {
+    button, .btn {
       font-family: var(--font-body);
       font-size: var(--text-sm);
       color: var(--color-ink);
@@ -60,63 +84,44 @@
       padding: 10px 14px;
       min-height: 44px;
       cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
       transition: background var(--dur) var(--ease-out), color var(--dur) var(--ease-out);
     }
-    button:hover, button.is-hover { background: var(--color-wax); }
-    button:active, button.is-active { transform: translateY(1px); }
-    button[aria-pressed="true"] {
-      background: var(--color-indigo);
-      color: var(--color-resist);
-      border-color: var(--color-indigo);
+    header.mast button, header.mast .btn {
+      color: var(--color-on-header);
+      background: transparent;
+      border-color: color-mix(in srgb, var(--color-on-header) 45%, transparent);
+    }
+    button:hover, .btn:hover, button.is-hover, .btn.is-hover { background: var(--color-wax); }
+    header.mast button:hover, header.mast .btn:hover {
+      background: color-mix(in srgb, var(--color-on-header) 12%, transparent);
+    }
+    button:active, .btn:active { transform: translateY(1px); }
+    button[aria-pressed="true"], .btn.is-on {
+      background: var(--color-tan);
+      color: var(--color-navy);
+      border-color: var(--color-tan);
     }
     button:disabled { opacity: 0.45; cursor: not-allowed; }
-    .stage {
-      display: grid;
-      grid-template-columns: 220px minmax(0, 1fr);
-      min-height: 0;
-    }
-    aside {
-      padding: var(--space-6) var(--space-6) var(--space-8);
-      border-right: var(--rule) solid var(--color-line);
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-6);
-    }
-    .status {
+    main { padding: var(--space-6) var(--space-8) var(--space-8); min-width: 0; }
+    h2 {
+      margin: 0 0 var(--space-3);
       font-family: var(--font-display);
       font-style: normal;
-      font-size: 1.6rem;
-      line-height: 1.1;
-      letter-spacing: -0.02em;
+      font-weight: 600;
+      font-size: 1.15rem;
+      letter-spacing: 0.04em;
     }
-    .status[data-live="true"] { color: var(--color-indigo); }
-    .note { color: var(--color-muted); font-size: var(--text-sm); margin: 0; }
-    dl { margin: 0; display: grid; gap: var(--space-3); }
-    dt {
-      font-size: var(--text-xs);
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: var(--color-muted);
-    }
-    dd {
-      margin: 2px 0 0;
-      font-family: var(--font-mono);
-      font-variant-numeric: tabular-nums;
-      font-size: var(--text-xl);
-    }
+    .note { color: var(--color-muted); font-size: var(--text-sm); margin: 0 0 var(--space-4); }
     .plots {
-      padding: var(--space-5) var(--space-8) var(--space-8);
       display: grid;
-      grid-template-rows: 1fr 1fr;
+      grid-template-columns: 1fr 1fr;
       gap: var(--space-5);
-      min-width: 0;
+      margin-bottom: var(--space-8);
     }
-    figure {
-      margin: 0;
-      min-height: 0;
-      display: flex;
-      flex-direction: column;
-    }
+    figure { margin: 0; min-width: 0; display: flex; flex-direction: column; }
     figcaption {
       font-size: var(--text-xs);
       letter-spacing: 0.08em;
@@ -124,13 +129,64 @@
       color: var(--color-muted);
       margin-bottom: var(--space-2);
     }
-    canvas {
-      width: 100%;
-      flex: 1;
-      min-height: 140px;
+    .chart-wrap {
+      position: relative;
       background: var(--color-resist);
       border: var(--rule) solid var(--color-line);
-      display: block;
+      min-height: 168px;
+    }
+    canvas { width: 100%; height: 168px; display: block; }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: var(--space-3);
+    }
+    .card {
+      background: var(--color-resist);
+      border: var(--rule) solid var(--color-line);
+      padding: 14px;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .card.empty { opacity: 0.55; }
+    .card h3 {
+      margin: 0;
+      font-size: 1rem;
+      font-style: normal;
+      font-weight: 600;
+      overflow-wrap: anywhere;
+    }
+    .idline {
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      color: var(--color-muted);
+      overflow-wrap: anywhere;
+    }
+    .chip {
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--color-wait);
+    }
+    .chip[data-live="true"] { color: var(--color-live); }
+    .nums {
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      font-size: 0.78rem;
+      display: grid;
+      gap: 2px;
+    }
+    .card input {
+      width: 100%;
+      min-height: 40px;
+      border: var(--rule) solid var(--color-line);
+      background: var(--color-paper);
+      color: var(--color-ink);
+      font-family: var(--font-body);
+      font-size: var(--text-sm);
+      padding: 8px 10px;
     }
     footer {
       display: flex;
@@ -142,97 +198,198 @@
       font-size: var(--text-sm);
     }
     footer p { margin: 0; }
+    .page { display: none; }
+    .page.is-on { display: block; }
+    .qna h2 { margin-top: var(--space-6); }
+    .qna p, .qna li { max-width: 68ch; }
+    .qna code {
+      font-family: var(--font-mono);
+      font-size: 0.9em;
+      background: var(--color-wax);
+      padding: 0 4px;
+    }
+    .back { margin-bottom: var(--space-4); }
+    .detail-meta {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: var(--space-3);
+      margin-bottom: var(--space-5);
+    }
+    .detail-meta div {
+      background: var(--color-resist);
+      border: var(--rule) solid var(--color-line);
+      padding: 12px;
+    }
+    .detail-meta dt {
+      font-size: var(--text-xs);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+    }
+    .detail-meta dd {
+      margin: 4px 0 0;
+      font-family: var(--font-mono);
+      font-size: var(--text-xl);
+    }
+    @media (max-width: 1100px) {
+      .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .plots { grid-template-columns: 1fr; }
+      .detail-meta { grid-template-columns: 1fr 1fr; }
+    }
     @media (max-width: 768px) {
-      header, .plots, footer, aside { padding-left: var(--space-4); padding-right: var(--space-4); }
-      .stage { grid-template-columns: 1fr; }
-      aside {
-        border-right: 0;
-        border-bottom: var(--rule) solid var(--color-line);
-        flex-direction: row;
-        flex-wrap: wrap;
-        gap: var(--space-4);
-      }
-      h1 { font-size: 2rem; overflow-wrap: anywhere; min-width: 0; }
-      dl { grid-template-columns: 1fr 1fr; width: 100%; }
+      header.mast, main, footer { padding-left: var(--space-4); padding-right: var(--space-4); }
+      .cards { grid-template-columns: 1fr; }
+      .wordmark strong { font-size: 1.2rem; overflow-wrap: anywhere; min-width: 0; }
     }
     @media (prefers-reduced-motion: reduce) {
-      button { transition: none; }
+      button, .btn { transition: none; }
     }
   </style>
 </head>
 <body>
   <div class="shell">
-    <header>
-      <h1>OPOYO</h1>
+    <header class="mast">
+      <a class="brand" href="#/">
+        <img src="/static/logo.svg" alt="">
+        <div class="wordmark">
+          <strong>OPOYO</strong>
+          <span>Observe · Predict · On Your Own</span>
+        </div>
+      </a>
       <div class="actions">
+        <a class="btn" id="qnaBtn" href="#/qna">QnA</a>
         <button type="button" id="pause" aria-pressed="false">Pause</button>
         <button type="button" id="theme">Night</button>
       </div>
     </header>
-    <div class="stage">
-      <aside>
-        <div>
-          <div class="status" id="status" data-live="false">Waiting</div>
-          <p class="note" id="meta">UDP 9000. No packets yet.</p>
+
+    <main>
+      <section id="home" class="page is-on">
+        <h2>Combined floor</h2>
+        <p class="note" id="comboNote">Max magnitude and max sound across live phones. x, y, z stay per phone.</p>
+        <div class="plots">
+          <figure>
+            <figcaption>Combined magnitude (g)</figcaption>
+            <div class="chart-wrap"><canvas id="comboMag" width="900" height="220" aria-label="Combined acceleration"></canvas></div>
+          </figure>
+          <figure>
+            <figcaption>Combined sound (dB)</figcaption>
+            <div class="chart-wrap"><canvas id="comboDb" width="900" height="220" aria-label="Combined sound"></canvas></div>
+          </figure>
         </div>
-        <dl>
-          <div>
-            <dt>Magnitude</dt>
-            <dd id="mag">-</dd>
-          </div>
-          <div>
-            <dt>Sound</dt>
-            <dd id="db">-</dd>
-          </div>
-          <div>
-            <dt>Rate</dt>
-            <dd id="hz">0 Hz</dd>
-          </div>
-          <div>
-            <dt>Packets</dt>
-            <dd id="n">0</dd>
-          </div>
-        </dl>
-        <p class="note">ax <span id="ax">-</span> &nbsp; ay <span id="ay">-</span> &nbsp; az <span id="az">-</span></p>
-      </aside>
-      <div class="plots">
-        <figure>
-          <figcaption>User acceleration (g)</figcaption>
-          <canvas id="magChart" width="1100" height="280" aria-label="Live acceleration trace"></canvas>
-        </figure>
-        <figure>
-          <figcaption>Sound level (dB)</figcaption>
-          <canvas id="dbChart" width="1100" height="280" aria-label="Live sound-level trace"></canvas>
-        </figure>
-      </div>
-    </div>
+        <h2>Phones</h2>
+        <p class="note">Five slots. Join order names the card. Rename sticks to the phone id after quit.</p>
+        <div class="cards" id="cards"></div>
+      </section>
+
+      <section id="phone" class="page">
+        <p><a class="btn back" href="#/">Back</a></p>
+        <h2 id="phoneTitle">Phone</h2>
+        <p class="idline" id="phoneId">-</p>
+        <div class="detail-meta">
+          <div><dt>Magnitude</dt><dd id="pMag">-</dd></div>
+          <div><dt>Sound</dt><dd id="pDb">-</dd></div>
+          <div><dt>Rate</dt><dd id="pHz">-</dd></div>
+          <div><dt>Packets</dt><dd id="pN">-</dd></div>
+        </div>
+        <div class="plots">
+          <figure>
+            <figcaption>ax (g)</figcaption>
+            <div class="chart-wrap"><canvas id="cAx" width="900" height="220" aria-label="ax"></canvas></div>
+          </figure>
+          <figure>
+            <figcaption>ay (g)</figcaption>
+            <div class="chart-wrap"><canvas id="cAy" width="900" height="220" aria-label="ay"></canvas></div>
+          </figure>
+          <figure>
+            <figcaption>az (g)</figcaption>
+            <div class="chart-wrap"><canvas id="cAz" width="900" height="220" aria-label="az"></canvas></div>
+          </figure>
+          <figure>
+            <figcaption>Magnitude (g)</figcaption>
+            <div class="chart-wrap"><canvas id="cMag" width="900" height="220" aria-label="magnitude"></canvas></div>
+          </figure>
+          <figure>
+            <figcaption>Sound (dB)</figcaption>
+            <div class="chart-wrap"><canvas id="cDb" width="900" height="220" aria-label="sound"></canvas></div>
+          </figure>
+        </div>
+      </section>
+
+      <section id="qna" class="page qna">
+        <p><a class="btn back" href="#/">Back</a></p>
+        <h2>What this is</h2>
+        <p>OPOYO is a floor-vibration fall detector. The product is a piezo puck bonded to a slab. This build is the proxy: iPhones on the floor send user-acceleration and a sound-level number to a Mac dashboard.</p>
+        <h2>How the pipe works</h2>
+        <ol>
+          <li>Each phone samples CoreMotion user-acceleration at 50 Hz and microphone RMS as dB.</li>
+          <li>A JSON packet goes over UDP to the Mac on port 9000. Audio samples never leave the phone. Only one dB number does.</li>
+          <li>The Mac keeps up to five phones, keyed by a UUID created on first launch.</li>
+          <li>This page shows the combined floor, then one screen per phone so a judge can see that each device is sending.</li>
+        </ol>
+        <h2>Formulas</h2>
+        <p>User acceleration is gravity-removed, in g.</p>
+        <p><code>mag = sqrt(ax² + ay² + az²)</code></p>
+        <p><code>dB = 20 · log10(max(rms, 1e-8))</code></p>
+        <p>Combined magnitude at a tick is the maximum <code>mag</code> among phones that sent a packet in the last 2.5 s. Combined sound is the maximum dB. Axes are not averaged. Each phone has its own heading.</p>
+        <h2>Identity</h2>
+        <p>A phone is not identified by MAC address. iOS will not give that to the app. The stable key is a UUID stored on the phone. The card also shows the model and a four-character short id. Rename on the dashboard is stored on the Mac against that UUID, so quit and rejoin keep the name.</p>
+        <h2>Limits</h2>
+        <ul>
+          <li>This is a phone-on-tile proxy, not a bonded piezo.</li>
+          <li>Campus Wi-Fi often blocks phone-to-laptop UDP. Personal hotspot is the trusted demo network.</li>
+          <li>A sixth phone is dropped.</li>
+          <li>No labelled fall corpus in this slice, so there is no trained detector on stage.</li>
+        </ul>
+        <h2>Not done yet</h2>
+        <ul>
+          <li>Impact trigger (peak, rise, decay) that can tell a body from a book.</li>
+          <li>60 s recovery window and a Cancel control.</li>
+          <li>Telegram alert to the adult child.</li>
+          <li>YAMNet or other pretrained audio veto.</li>
+          <li>1D-CNN on labelled windows. CS pair owns that later.</li>
+          <li>Piezo puck hardware.</li>
+        </ul>
+      </section>
+    </main>
+
     <footer>
       <p>Phone is a proxy. Product is a floor puck.</p>
       <p id="foot">No model. Signal only.</p>
     </footer>
   </div>
   <script>
-    const magBuf = [];
-    const dbBuf = [];
     const MAX = 220;
-    const magEl = document.getElementById("mag");
-    const dbEl = document.getElementById("db");
-    const hzEl = document.getElementById("hz");
-    const nEl = document.getElementById("n");
-    const metaEl = document.getElementById("meta");
-    const statusEl = document.getElementById("status");
-    const magCanvas = document.getElementById("magChart");
-    const dbCanvas = document.getElementById("dbChart");
-    const pauseBtn = document.getElementById("pause");
-    const themeBtn = document.getElementById("theme");
+    const PAD = { l: 44, r: 10, t: 10, b: 22 };
+    const comboMagBuf = [];
+    const comboDbBuf = [];
+    const nodes = {};
+    let slots = [];
     let paused = false;
+    let dropped = 0;
+    let combined = { mag: 0, db: -120, live: 0, hz: 0, packets: 0 };
     let lastRecv = 0;
 
+    const pauseBtn = document.getElementById("pause");
+    const themeBtn = document.getElementById("theme");
+    const cardsEl = document.getElementById("cards");
+    const footEl = document.getElementById("foot");
+    const comboNote = document.getElementById("comboNote");
+
     function ink() {
-      return getComputedStyle(document.body).getPropertyValue("--color-indigo").trim() || "#1e2f4f";
+      return getComputedStyle(document.body).getPropertyValue("--color-navy").trim() || "#1e3a5f";
     }
-    function soga() {
-      return getComputedStyle(document.body).getPropertyValue("--color-soga").trim() || "#8b4b28";
+    function teal() {
+      return getComputedStyle(document.body).getPropertyValue("--color-teal").trim() || "#3d7a7a";
+    }
+    function tan() {
+      return getComputedStyle(document.body).getPropertyValue("--color-tan").trim() || "#c4a574";
+    }
+    function muted() {
+      return getComputedStyle(document.body).getPropertyValue("--color-muted").trim() || "#5c6b7a";
+    }
+    function line() {
+      return getComputedStyle(document.body).getPropertyValue("--color-line").trim() || "#d8d0c4";
     }
 
     function applyTheme(name) {
@@ -253,30 +410,48 @@
       pauseBtn.textContent = paused ? "Resume" : "Pause";
     });
 
-    function draw(canvas, values, min, max, stroke) {
+    function fmt(n, digits) {
+      return typeof n === "number" && isFinite(n) ? n.toFixed(digits) : "-";
+    }
+    function pushBuf(buf, v) {
+      buf.push(v);
+      while (buf.length > MAX) buf.shift();
+    }
+    function ensure(id) {
+      if (!nodes[id]) {
+        nodes[id] = { ax: [], ay: [], az: [], mag: [], db: [], meta: {} };
+      }
+      return nodes[id];
+    }
+
+    function draw(canvas, values, min, max, stroke, unit) {
       const ctx = canvas.getContext("2d");
       const w = canvas.width;
       const h = canvas.height;
       ctx.clearRect(0, 0, w, h);
+      const innerW = w - PAD.l - PAD.r;
+      const innerH = h - PAD.t - PAD.b;
+      ctx.strokeStyle = line();
+      ctx.lineWidth = 1;
+      ctx.fillStyle = muted();
+      ctx.font = "11px ui-monospace, SF Mono, Menlo, monospace";
+      const ticks = 4;
+      for (let i = 0; i <= ticks; i++) {
+        const frac = i / ticks;
+        const y = PAD.t + innerH * (1 - frac);
+        const val = min + (max - min) * frac;
+        ctx.beginPath();
+        ctx.moveTo(PAD.l, y);
+        ctx.lineTo(w - PAD.r, y);
+        ctx.stroke();
+        ctx.fillText(val.toFixed(unit === "dB" ? 0 : 2), 4, y + 3);
+      }
+      ctx.fillText(unit, 4, h - 6);
       if (values.length < 2) return;
       ctx.beginPath();
       values.forEach((v, i) => {
-        const x = (i / (MAX - 1)) * w;
-        const y = h - ((v - min) / (max - min || 1)) * (h - 8) - 4;
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      });
-      ctx.lineTo(w, h);
-      ctx.lineTo(0, h);
-      ctx.closePath();
-      ctx.fillStyle = stroke;
-      ctx.globalAlpha = 0.12;
-      ctx.fill();
-      ctx.globalAlpha = 1;
-      ctx.beginPath();
-      values.forEach((v, i) => {
-        const x = (i / (MAX - 1)) * w;
-        const y = h - ((v - min) / (max - min || 1)) * (h - 8) - 4;
+        const x = PAD.l + (i / (MAX - 1)) * innerW;
+        const y = PAD.t + innerH - ((v - min) / (max - min || 1)) * innerH;
         if (i === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
       });
@@ -285,31 +460,172 @@
       ctx.stroke();
     }
 
-    function fmt(n, digits) {
-      return typeof n === "number" && isFinite(n) ? n.toFixed(digits) : "-";
+    function magScale(buf) {
+      return Math.max(0.4, ...buf, 0.4);
     }
 
-    function setLive(on) {
-      statusEl.dataset.live = on ? "true" : "false";
-      statusEl.textContent = on ? "Live" : "Waiting";
+    function route() {
+      const hash = location.hash || "#/";
+      const home = document.getElementById("home");
+      const phone = document.getElementById("phone");
+      const qna = document.getElementById("qna");
+      home.classList.remove("is-on");
+      phone.classList.remove("is-on");
+      qna.classList.remove("is-on");
+      if (hash.startsWith("#/qna")) {
+        qna.classList.add("is-on");
+        return;
+      }
+      if (hash.startsWith("#/phone/")) {
+        phone.classList.add("is-on");
+        renderPhone(hash.slice(8));
+        return;
+      }
+      home.classList.add("is-on");
     }
 
-    function push(p) {
-      if (paused || typeof p.mag !== "number") return;
+    function renderCards() {
+      const parts = [];
+      for (let i = 0; i < 5; i++) {
+        const slot = slots[i] || { slot: i + 1, empty: true };
+        if (slot.empty) {
+          parts.push(
+            `<article class="card empty"><div class="chip">Waiting</div><h3>Phone ${i + 1}</h3><p class="idline">Empty slot</p></article>`
+          );
+          continue;
+        }
+        const live = slot.live ? "true" : "false";
+        parts.push(
+          `<article class="card">
+            <div class="chip" data-live="${live}">${slot.live ? "Live" : "Waiting"}</div>
+            <h3>${escapeHtml(slot.name || "Phone " + slot.slot)}</h3>
+            <p class="idline">${escapeHtml(slot.model || "iPhone")} · ${escapeHtml(slot.short || "")}</p>
+            <div class="nums">
+              mag ${fmt(slot.mag, 3)} g<br>
+              sound ${fmt(slot.db, 1)} dB<br>
+              ax ${fmt(slot.ax, 3)} g · ay ${fmt(slot.ay, 3)} g · az ${fmt(slot.az, 3)} g<br>
+              ${fmt(slot.hz, 1)} Hz · ${slot.packets || 0} pkt
+            </div>
+            <input data-rename="${escapeHtml(slot.id)}" value="${escapeHtml(slot.name || "")}" aria-label="Rename phone">
+            <a class="btn" href="#/phone/${encodeURIComponent(slot.id)}">Open</a>
+          </article>`
+        );
+      }
+      const typing = document.activeElement && document.activeElement.getAttribute && document.activeElement.getAttribute("data-rename");
+      if (typing) return;
+      cardsEl.innerHTML = parts.join("");
+      cardsEl.querySelectorAll("input[data-rename]").forEach((el) => {
+        el.addEventListener("change", async () => {
+          const id = el.getAttribute("data-rename");
+          try {
+            await fetch("/api/phones/" + encodeURIComponent(id) + "/name", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ name: el.value })
+            });
+          } catch (e) {}
+        });
+      });
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, (c) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      }[c]));
+    }
+
+    function renderPhone(id) {
+      const slot = slots.find((s) => s && s.id === id);
+      const buf = ensure(id);
+      const name = (slot && slot.name) || buf.meta.name || "Phone";
+      document.getElementById("phoneTitle").textContent = name;
+      const model = (slot && slot.model) || buf.meta.model || "iPhone";
+      const short = (slot && slot.short) || buf.meta.short || "";
+      const from = (slot && slot.from) || buf.meta.from || "";
+      document.getElementById("phoneId").textContent = model + " · " + short + (from ? " · " + from : "");
+      const mag = slot ? slot.mag : buf.mag[buf.mag.length - 1];
+      const db = slot ? slot.db : buf.db[buf.db.length - 1];
+      document.getElementById("pMag").textContent = fmt(mag, 3) + " g";
+      document.getElementById("pDb").textContent = fmt(db, 1) + " dB";
+      document.getElementById("pHz").textContent = fmt(slot ? slot.hz : 0, 1) + " Hz";
+      document.getElementById("pN").textContent = String((slot && slot.packets) || 0);
+      const axMax = Math.max(0.4, ...buf.ax.map(Math.abs), 0.4);
+      const ayMax = Math.max(0.4, ...buf.ay.map(Math.abs), 0.4);
+      const azMax = Math.max(0.4, ...buf.az.map(Math.abs), 0.4);
+      draw(document.getElementById("cAx"), buf.ax, -axMax, axMax, ink(), "g");
+      draw(document.getElementById("cAy"), buf.ay, -ayMax, ayMax, teal(), "g");
+      draw(document.getElementById("cAz"), buf.az, -azMax, azMax, tan(), "g");
+      draw(document.getElementById("cMag"), buf.mag, 0, magScale(buf.mag), ink(), "g");
+      draw(document.getElementById("cDb"), buf.db, -80, 0, tan(), "dB");
+    }
+
+    function applyState(s) {
+      if (!s) return;
+      if (Array.isArray(s.slots)) slots = s.slots;
+      if (s.combined) combined = s.combined;
+      if (typeof s.dropped === "number") dropped = s.dropped;
+      if (s.histories) {
+        Object.keys(s.histories).forEach((id) => {
+          const buf = ensure(id);
+          const rows = s.histories[id] || [];
+          buf.ax = rows.map((r) => r.ax);
+          buf.ay = rows.map((r) => r.ay);
+          buf.az = rows.map((r) => r.az);
+          buf.mag = rows.map((r) => r.mag);
+          buf.db = rows.map((r) => r.db);
+        });
+      }
+      if (Array.isArray(s.combined_history) && s.combined_history.length) {
+        comboMagBuf.length = 0;
+        comboDbBuf.length = 0;
+        s.combined_history.forEach((r) => {
+          comboMagBuf.push(r.mag);
+          comboDbBuf.push(r.db);
+        });
+      }
+      renderCards();
+      draw(document.getElementById("comboMag"), comboMagBuf, 0, magScale(comboMagBuf), ink(), "g");
+      draw(document.getElementById("comboDb"), comboDbBuf, -80, 0, tan(), "dB");
+      comboNote.textContent = (combined.live || 0) + " live · combined " + fmt(combined.mag, 3) + " g · " + fmt(combined.db, 1) + " dB · " + fmt(combined.hz, 1) + " Hz";
+      footEl.textContent = "Dropped extras: " + dropped + ". No model. Signal only.";
+      const hash = location.hash || "#/";
+      if (hash.startsWith("#/phone/")) renderPhone(hash.slice(8));
+    }
+
+    function onTick(p) {
+      if (paused || !p || !p.id) return;
       lastRecv = performance.now();
-      magEl.textContent = fmt(p.mag, 3) + " g";
-      dbEl.textContent = fmt(p.db, 1) + " dB";
-      document.getElementById("ax").textContent = fmt(p.ax, 3);
-      document.getElementById("ay").textContent = fmt(p.ay, 3);
-      document.getElementById("az").textContent = fmt(p.az, 3);
-      magBuf.push(p.mag);
-      dbBuf.push(typeof p.db === "number" ? p.db : -120);
-      while (magBuf.length > MAX) magBuf.shift();
-      while (dbBuf.length > MAX) dbBuf.shift();
-      metaEl.textContent = (p.from || "phone") + "  ·  t " + (p.t || "-");
-      const magMax = Math.max(0.4, ...magBuf);
-      draw(magCanvas, magBuf, 0, magMax, ink());
-      draw(dbCanvas, dbBuf, -80, 0, soga());
+      const buf = ensure(p.id);
+      buf.meta = { name: p.name, model: p.model, short: p.short, from: p.from };
+      pushBuf(buf.ax, p.ax);
+      pushBuf(buf.ay, p.ay);
+      pushBuf(buf.az, p.az);
+      pushBuf(buf.mag, p.mag);
+      pushBuf(buf.db, typeof p.db === "number" ? p.db : -120);
+      if (p.combined) {
+        combined = p.combined;
+        pushBuf(comboMagBuf, p.combined.mag);
+        pushBuf(comboDbBuf, p.combined.db);
+      }
+      const existing = slots.find((s) => s && s.id === p.id);
+      if (existing) {
+        existing.live = true;
+        existing.ax = p.ax;
+        existing.ay = p.ay;
+        existing.az = p.az;
+        existing.mag = p.mag;
+        existing.db = p.db;
+        existing.hz = p.hz;
+        existing.packets = p.packets;
+        existing.name = p.name;
+        existing.model = p.model;
+        existing.short = p.short;
+        existing.from = p.from;
+      }
+      draw(document.getElementById("comboMag"), comboMagBuf, 0, magScale(comboMagBuf), ink(), "g");
+      draw(document.getElementById("comboDb"), comboDbBuf, -80, 0, tan(), "dB");
+      comboNote.textContent = (combined.live || 0) + " live · combined " + fmt(combined.mag, 3) + " g · " + fmt(combined.db, 1) + " dB · " + fmt(combined.hz, 1) + " Hz";
+      if ((location.hash || "#/").startsWith("#/phone/" + p.id)) renderPhone(p.id);
     }
 
     function connect() {
@@ -318,31 +634,24 @@
       ws.onmessage = (ev) => {
         let p;
         try { p = JSON.parse(ev.data); } catch (e) { return; }
-        if (p && p.latest) {
-          nEl.textContent = String(p.packets || 0);
-          hzEl.textContent = (p.hz ?? 0) + " Hz";
-          if (p.latest) push(p.latest);
-          return;
-        }
-        push(p);
+        if (p && p.k === "state") applyState(p);
+        else if (p && p.k === "tick") onTick(p);
+        else if (p && p.slots) applyState(p);
       };
       ws.onclose = () => setTimeout(connect, 1000);
     }
+
+    window.addEventListener("hashchange", route);
+    route();
     connect();
 
     setInterval(async () => {
       try {
         const r = await fetch("/api/state");
         const s = await r.json();
-        nEl.textContent = String(s.packets ?? 0);
-        hzEl.textContent = (s.hz ?? 0) + " Hz";
-        const age = performance.now() - lastRecv;
-        setLive((s.hz || 0) > 2 && age < 2500);
-        if ((s.hz || 0) === 0 && age > 2500) setLive(false);
-      } catch (e) {
-        setLive(false);
-      }
-    }, 400);
+        applyState(s);
+      } catch (e) {}
+    }, 800);
   </script>
 </body>
 </html>

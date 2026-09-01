@@ -14,23 +14,23 @@ struct ContentView: View {
     var body: some View {
         ZStack {
             cloth.paper.ignoresSafeArea()
-            KawungCloth(stroke: cloth.kawung)
-                .ignoresSafeArea()
 
-            ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
-                    header
-                    liveReadout
-                    axes
-                    destination
-                    controls
-                    footnote
+            VStack(spacing: 0) {
+                headerBar
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 24) {
+                        liveReadout
+                        axes
+                        destination
+                        controls
+                        footnote
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 16)
+                    .padding(.bottom, 32)
                 }
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
-                .padding(.bottom, 32)
+                .scrollDismissesKeyboard(.interactively)
             }
-            .scrollDismissesKeyboard(.interactively)
         }
         .tint(cloth.indigo)
         .onAppear {
@@ -38,63 +38,72 @@ struct ContentView: View {
         }
     }
 
-    private var header: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("OPOYO")
-                    .font(Typeface.display(34))
-                    .foregroundStyle(cloth.ink)
-                    .tracking(-0.4)
-                Spacer(minLength: 12)
+    private var headerBar: some View {
+        ZStack {
+            cloth.header
+            KawungCloth(stroke: cloth.kawung)
+            HStack(alignment: .center, spacing: 12) {
+                LogoMark()
+                    .frame(width: 44, height: 32)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("OPOYO")
+                        .font(Typeface.display(22))
+                        .tracking(3.2)
+                        .foregroundStyle(cloth.onHeader)
+                    Text("Observe · Predict · On Your Own")
+                        .font(Typeface.body(11))
+                        .foregroundStyle(cloth.tan)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                }
+                Spacer(minLength: 8)
                 statusChip
             }
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Phone is a proxy.")
-                    .font(Typeface.displayRoman(17))
-                    .foregroundStyle(cloth.ink)
-                Text("Product is a floor puck.")
-                    .font(Typeface.body(15))
-                    .foregroundStyle(cloth.muted)
-            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
         }
+        .frame(minHeight: 72)
     }
 
     private var statusChip: some View {
         let streaming = session.isRunning
         return HStack(spacing: 8) {
             Circle()
-                .fill(streaming ? cloth.indigo : cloth.muted.opacity(0.45))
+                .fill(streaming ? cloth.tan : cloth.onHeader.opacity(0.45))
                 .frame(width: 8, height: 8)
             Text(streaming ? "Streaming" : "Idle")
                 .font(Typeface.bodyMedium(12))
                 .tracking(1.1)
                 .textCase(.uppercase)
-                .foregroundStyle(streaming ? cloth.indigo : cloth.muted)
+                .foregroundStyle(streaming ? cloth.tan : cloth.onHeader.opacity(0.8))
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
-        .background(cloth.resist)
         .overlay(
             RoundedRectangle(cornerRadius: 2, style: .continuous)
-                .stroke(streaming ? cloth.indigo : cloth.line, lineWidth: 1)
+                .stroke(streaming ? cloth.tan : cloth.onHeader.opacity(0.35), lineWidth: 1)
         )
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(streaming ? "Streaming" : "Idle")
     }
 
     private var liveReadout: some View {
-        HStack(alignment: .top, spacing: 12) {
-            liveTile(
-                label: "Magnitude",
-                value: String(format: "%.3f", session.magnitude),
-                unit: "g"
-            )
-            liveTile(
-                label: "Sound",
-                value: String(format: "%.1f", session.decibels),
-                unit: "dB"
-            )
+        VStack(alignment: .leading, spacing: 10) {
+            Text("\(session.modelName) · \(session.shortId)")
+                .font(Typeface.body(13))
+                .foregroundStyle(cloth.muted)
+            HStack(alignment: .top, spacing: 12) {
+                liveTile(
+                    label: "Magnitude",
+                    value: String(format: "%.3f", session.magnitude),
+                    unit: "g"
+                )
+                liveTile(
+                    label: "Sound",
+                    value: String(format: "%.1f", session.decibels),
+                    unit: "dB"
+                )
+            }
         }
     }
 
@@ -127,13 +136,13 @@ struct ContentView: View {
 
     private var axes: some View {
         HStack(spacing: 0) {
-            axisCell("ax", String(format: "%+.3f", session.ax))
+            axisCell("ax", String(format: "%+.3f", session.ax), "g")
             axisDivider
-            axisCell("ay", String(format: "%+.3f", session.ay))
+            axisCell("ay", String(format: "%+.3f", session.ay), "g")
             axisDivider
-            axisCell("az", String(format: "%+.3f", session.az))
+            axisCell("az", String(format: "%+.3f", session.az), "g")
             axisDivider
-            axisCell("Packets", "\(session.packetsSent)")
+            axisCell("Packets", "\(session.packetsSent)", "")
         }
         .padding(.vertical, 12)
         .padding(.horizontal, 4)
@@ -150,22 +159,30 @@ struct ContentView: View {
             .frame(width: 1, height: 36)
     }
 
-    private func axisCell(_ label: String, _ value: String) -> some View {
+    private func axisCell(_ label: String, _ value: String, _ unit: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(label)
                 .font(Typeface.bodyMedium(10))
                 .tracking(1.1)
                 .textCase(.uppercase)
                 .foregroundStyle(cloth.muted)
-            Text(value)
-                .font(Typeface.numberRegular(16))
-                .foregroundStyle(cloth.ink)
-                .lineLimit(1)
-                .minimumScaleFactor(0.6)
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Text(value)
+                    .font(Typeface.numberRegular(16))
+                    .foregroundStyle(cloth.ink)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                if !unit.isEmpty {
+                    Text(unit)
+                        .font(Typeface.bodyMedium(11))
+                        .foregroundStyle(cloth.muted)
+                }
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 10)
         .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(label) \(value) \(unit)")
     }
 
     private var destination: some View {
@@ -246,7 +263,7 @@ struct ContentView: View {
     }
 
     private var footnote: some View {
-        Text("Place the phone face-down on tile. Same Wi-Fi or personal hotspot as the Mac. Allow microphone and local network when iOS asks.")
+        Text("Place the phone face-down on tile. Same Wi-Fi or personal hotspot as the Mac. Allow microphone and local network when iOS asks. Name is assigned on the Mac.")
             .font(Typeface.body(13))
             .foregroundStyle(cloth.muted)
             .fixedSize(horizontal: false, vertical: true)

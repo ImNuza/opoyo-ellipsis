@@ -1,5 +1,14 @@
 [
   {
+    "date": "2026-09-01",
+    "macrostructure": "Workbench",
+    "theme": "studied-DNA",
+    "theme_axes": "light / geometric-sans / cool",
+    "vibe": "navy teal tan lockup, batik header only",
+    "enrichment": "E5 hand-built SVG",
+    "brief": "OPOYO multi-phone dashboard plus QnA"
+  },
+  {
     "date": "2026-08-31",
     "macrostructure": "Workbench",
     "theme": "custom",

@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		23A734E45171BED7909727D0 /* DeviceIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55EDA28BA19A1402288E8C87 /* DeviceIdentity.swift */; };
 		65021A50BE1475E64940D04E /* DbMeter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0577571B9793F714A9EDE66 /* DbMeter.swift */; };
 		78FE133EAE37D732405EFA41 /* UDPClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F816D3A51C3584C6D0CEBED3 /* UDPClient.swift */; };
 		9D1639B14FE8E60220D7BC57 /* SensorSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD5BEB7479AB1A2F91E532B7 /* SensorSession.swift */; };
@@ -20,6 +21,7 @@
 		200AD61CEAB0C96E401CE5FA /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		247CA35AB70A33565B6F8A5A /* Cloth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Cloth.swift; sourceTree = "<group>"; };
 		32FBE4CD126B761DEFC581E3 /* OpoyoPhone.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = OpoyoPhone.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		55EDA28BA19A1402288E8C87 /* DeviceIdentity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceIdentity.swift; sourceTree = "<group>"; };
 		7E13C63405A56EDE63A96CAD /* OpoyoPhoneApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpoyoPhoneApp.swift; sourceTree = "<group>"; };
 		CD5BEB7479AB1A2F91E532B7 /* SensorSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SensorSession.swift; sourceTree = "<group>"; };
 		D0577571B9793F714A9EDE66 /* DbMeter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DbMeter.swift; sourceTree = "<group>"; };
@@ -35,6 +37,7 @@
 				247CA35AB70A33565B6F8A5A /* Cloth.swift */,
 				200AD61CEAB0C96E401CE5FA /* ContentView.swift */,
 				D0577571B9793F714A9EDE66 /* DbMeter.swift */,
+				55EDA28BA19A1402288E8C87 /* DeviceIdentity.swift */,
 				7E13C63405A56EDE63A96CAD /* OpoyoPhoneApp.swift */,
 				CD5BEB7479AB1A2F91E532B7 /* SensorSession.swift */,
 				F816D3A51C3584C6D0CEBED3 /* UDPClient.swift */,
@@ -132,6 +135,7 @@
 				B727F0EDF89155B7B83EC9B8 /* Cloth.swift in Sources */,
 				9E3433E88425871048C596D8 /* ContentView.swift in Sources */,
 				65021A50BE1475E64940D04E /* DbMeter.swift in Sources */,
+				23A734E45171BED7909727D0 /* DeviceIdentity.swift in Sources */,
 				E9ED44773CAFB6A03D2AD181 /* OpoyoPhoneApp.swift in Sources */,
 				9D1639B14FE8E60220D7BC57 /* SensorSession.swift in Sources */,
 				78FE133EAE37D732405EFA41 /* UDPClient.swift in Sources */,
