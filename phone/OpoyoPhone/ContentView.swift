@@ -20,6 +20,7 @@ struct ContentView: View {
                 headerBar
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
+                        collect
                         liveReadout
                         axes
                         destination
@@ -39,6 +40,9 @@ struct ContentView: View {
             applyIdleTimer()
         }
         .onChange(of: session.isRunning) { _, _ in
+            applyIdleTimer()
+        }
+        .onChange(of: session.isCapturing) { _, _ in
             applyIdleTimer()
         }
         .onChange(of: keepAwake) { _, _ in
@@ -82,16 +86,16 @@ struct ContentView: View {
     }
 
     private var statusChip: some View {
-        let streaming = session.isRunning
+        let live = session.isRunning || session.isCapturing
         return HStack(spacing: 8) {
             Circle()
-                .fill(streaming ? cloth.tan : cloth.onHeader.opacity(0.45))
+                .fill(live ? cloth.tan : cloth.onHeader.opacity(0.45))
                 .frame(width: 8, height: 8)
-            Text(streaming ? "Streaming" : "Idle")
+            Text(session.isCapturing ? "Recording" : (session.isRunning ? "Streaming" : "Idle"))
                 .font(Typeface.bodyMedium(12))
                 .tracking(1.1)
                 .textCase(.uppercase)
-                .foregroundStyle(streaming ? cloth.tan : cloth.onHeader.opacity(0.8))
+                .foregroundStyle(live ? cloth.tan : cloth.onHeader.opacity(0.8))
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
@@ -101,6 +105,50 @@ struct ContentView: View {
         )
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(streaming ? "Streaming" : "Idle")
+    }
+
+    private var collect: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Collect a take")
+                .font(Typeface.bodyMedium(11))
+                .tracking(1.3)
+                .textCase(.uppercase)
+                .foregroundStyle(cloth.muted)
+            Text("2 s still · one action · 2 s still · stop · send")
+                .font(Typeface.body(13))
+                .foregroundStyle(cloth.muted)
+
+            Picker("Label", selection: $session.label) {
+                ForEach(SensorSession.labels, id: \.self) { name in
+                    Text(name).tag(name)
+                }
+            }
+            .pickerStyle(.menu)
+            .disabled(session.isCapturing)
+
+            Button(action: toggleTake) {
+                Text(session.isCapturing ? "Stop take · \(session.takeRows)" : "Record \(session.label)")
+                    .font(Typeface.bodyDemi(18))
+                    .frame(maxWidth: .infinity, minHeight: 56)
+                    .foregroundStyle(cloth.onAccent)
+                    .background(session.isCapturing ? cloth.soga : cloth.indigo)
+            }
+            .buttonStyle(.plain)
+
+            if let url = session.lastTakeURL {
+                ShareLink(item: url, preview: SharePreview(url.lastPathComponent)) {
+                    Text("Send \(url.lastPathComponent)")
+                        .font(Typeface.bodyDemi(16))
+                        .frame(maxWidth: .infinity, minHeight: 48)
+                        .foregroundStyle(cloth.indigo)
+                        .background(cloth.resist)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 2, style: .continuous)
+                                .stroke(cloth.indigo, lineWidth: 1)
+                        )
+                }
+            }
+        }
     }
 
     private var liveReadout: some View {
@@ -296,7 +344,7 @@ struct ContentView: View {
     }
 
     private var footnote: some View {
-        Text("Place the phone face-down on tile. Same Wi-Fi or personal hotspot as the Mac. Screen stays on while streaming. Allow microphone and local network when iOS asks. Name is assigned on the Mac.")
+        Text("Collect: face-down on tile, pick a label, Record, one action, Stop, Send on Telegram. Laptop streaming is only for the live dashboard.")
             .font(Typeface.body(13))
             .foregroundStyle(cloth.muted)
             .fixedSize(horizontal: false, vertical: true)
@@ -311,7 +359,16 @@ struct ContentView: View {
         applyIdleTimer()
     }
 
+    private func toggleTake() {
+        if session.isCapturing {
+            _ = session.stopTake()
+        } else {
+            session.startTake()
+        }
+        applyIdleTimer()
+    }
+
     private func applyIdleTimer() {
-        UIApplication.shared.isIdleTimerDisabled = session.isRunning || keepAwake
+        UIApplication.shared.isIdleTimerDisabled = session.isRunning || session.isCapturing || keepAwake
     }
 }

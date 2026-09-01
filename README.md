@@ -1,52 +1,52 @@
 # OPOYO
 
-Passive floor-vibration fall detector. This repo is the hackathon prototype.
+A senior falls, cannot get up, and cannot call. The harm is time on the floor (a long lie). Wall buttons, wearables, and cameras fail this segment: they need a press, a worn charged device, or a camera in the rooms people refuse.
 
-The production node is a piezo puck bonded to the slab. This build uses iPhones on the floor as a proxy: accelerometer plus a sound-level meter, streamed to a Mac. A kinematic rule on the Mac decides suspect / recovered / confirmed. Telegram fires. No trained model yet.
+OPOYO is a floor sensor. Production is a piezo and a microphone bonded to the slab; classification stays on the device and only event JSON leaves the flat. This repo is the hackathon prototype of that pipeline.
 
-## Live path
+The pipeline is sequential: high-pass the floor vibration, trigger on a quiet-floor threshold, clip a short window, score seven features, optionally suppress with an audio check, then confirm (recovered / cancelled / alert). Only an alert sends Telegram. See `docs/OPOYO-briefing.md` for numbers and what is still a placeholder.
 
-1. iOS app `phone/OpoyoPhone` reads user-acceleration at 50 Hz and microphone RMS in dB. Screen stays on while streaming.
-2. Packets go over UDP JSON to the Mac (`v, id, model, t, ax, ay, az, mag, db`).
-3. FastAPI on the Mac listens on UDP 9000 and shows up to five phones at http://127.0.0.1:8000
-4. `server/detect.py` scores combined magnitude (peak, rise, decay). Suspect starts a 10 s demo clock. Cancel is on the dashboard. Extra motion recovers. Timeout confirms.
-5. Telegram: t+0 on suspect, t+10 on confirmed. Target chat is `TELEGRAM_TARGET` in `.env`.
+The demo sensor is an iPhone on the floor, not a slab transducer. It streams 50 Hz user-acceleration and a scalar dB over UDP. Nyquist is 25 Hz, so spectral features are weak; envelope features may still separate a bag from a book on hard tile. That is empirical and unmeasured until you have labelled CSVs. The phone does not measure the slab, and this build does not claim it does.
 
-Each phone carries a UUID created on first launch. Combined traces use max magnitude and max dB. Axes stay per phone.
+## Setup
 
-CS later: replace `Detector.tick` with a model that emits the same `FallEvent`. Disagree with the rule → no Telegram. QnA on the dashboard lists env knobs.
+Python 3.12. From `opoyo-ellipsis`:
 
-Not in this slice: YAMNet, 1D-CNN, piezo hardware, true background streaming.
+**Windows (PowerShell)**
 
-## Mac receiver
+```powershell
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+copy .env.example .env
+```
+
+**Mac**
 
 ```bash
-cd "/Users/dewa/Documents/Projects/Ellipsis Tech Series/opoyo-ellipsis"
-python3 -m venv .venv
+python3.12 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-python3 -m uvicorn server.app:app --host 0.0.0.0 --port 8000
+cp .env.example .env
 ```
 
-Open http://127.0.0.1:8000
+Fill Telegram fields in `.env` when you want live messages. Leave `escalate.dry_run: true` in `config.yaml` until then. Do not commit `.env`.
 
-Copy `.env.example` to `.env` and fill Telegram. Do not commit `.env`.
+## Run
 
-Without a phone, a synthetic knee-drop:
+From `opoyo-ellipsis`, with the venv active:
 
 ```bash
-python3 server/fake_phone.py --nodes 1 --impact knee --seconds 4
+python -m uvicorn opoyo.server:app --host 127.0.0.1 --port 8000
 ```
 
-A book-shaped spike (should stay Quiet):
+Dashboard: http://127.0.0.1:8000
 
-```bash
-python3 server/fake_phone.py --nodes 1 --impact book --seconds 3
-```
+The server also binds UDP **9000** for phone packets.
 
-## iPhone app
+## Phone
 
-Needs Xcode 26, a paid Apple Developer team, and the physical iPhone on the same Wi-Fi or a personal hotspot.
+iOS app: `phone/OpoyoPhone`. Needs a Mac, Xcode, and a physical iPhone.
 
 ```bash
 cd phone
@@ -54,14 +54,32 @@ xcodegen generate
 open OpoyoPhone.xcodeproj
 ```
 
-On first launch allow Microphone and Local Network. Type the Mac LAN IP. Port `9000`. Start. Put the phone face-down on tile.
+Same Wi-Fi as the laptop, or a phone hotspot. Campus Wi-Fi often blocks UDP; hotspot is the default. If the phone is the hotspot, the laptop address is often `172.20.10.11`. Port `9000`. Allow Microphone and Local Network. Put the phone face-down on hard floor (tile or vinyl), case off if you can.
 
-If the phone is the hotspot, the Mac address is almost always `172.20.10.11`. Campus Wi-Fi often blocks UDP. Hotspot is the trusted demo network.
+Packets are JSON: `{v,id,model,t,ax,ay,az,mag,db}`.
 
-## Packet
+## Record
 
-```json
-{"v":2,"id":"c0a1...","model":"iPhone 17 Pro Max","t":1735689600123,"ax":0.01,"ay":0.0,"az":-0.02,"mag":0.03,"db":-41.2}
+Do not run the recorder at the same time as the server (both want UDP 9000).
+
+```bash
+python scripts/record.py --interactive
+```
+
+Labelling procedure: `docs/data-collection.md`. One event per file.
+
+## Fake phone (no hardware)
+
+Server must be running.
+
+```bash
+python scripts/fake_phone.py --impact heeldrop --seconds 8
+```
+
+## Tests
+
+```bash
+pytest -q
 ```
 
 ## Team

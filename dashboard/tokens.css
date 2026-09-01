@@ -1,0 +1,60 @@
+/* Hallmark · macrostructure: Workbench · tone: austere · anchor hue: navy
+ * theme: studied-DNA (source: image) · paper #FAF7F1 · accent #1E3A5F navy
+ * display Avenir Next + SF Mono · batik header only
+ * audience: demo operators and judges · use: read live floor signal
+ * Hallmark · pre-emit critique: P4 H4 E4 S4 R4 V4
+ */
+
+:root {
+  --color-paper: #faf7f1;
+  --color-resist: #ffffff;
+  --color-ink: #1e3a5f;
+  --color-muted: #5c6b7a;
+  --color-line: #d8d0c4;
+  --color-navy: #1e3a5f;
+  --color-teal: #3d7a7a;
+  --color-tan: #c4a574;
+  --color-wax: #efe6d6;
+  --color-live: #2f6b4f;
+  --color-wait: #8a7a64;
+  --color-focus: #1e3a5f;
+  --color-header: #1e3a5f;
+  --color-on-header: #faf7f1;
+  --font-display: "Avenir Next", "Segoe UI", sans-serif;
+  --font-body: "Avenir Next", "Segoe UI", sans-serif;
+  --font-mono: "SF Mono", ui-monospace, Menlo, monospace;
+  --text-display: 2rem;
+  --text-xl: 1.25rem;
+  --text-md: 1rem;
+  --text-sm: 0.8125rem;
+  --text-xs: 0.6875rem;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --radius: 2px;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur: 180ms;
+  --rule: 1px;
+  --header-batik: url("/static/batik-header.jpg");
+}
+
+html[data-theme="night"] {
+  --color-paper: #121820;
+  --color-resist: #1a222c;
+  --color-ink: #faf7f1;
+  --color-muted: #b7c0c8;
+  --color-line: #314050;
+  --color-navy: #c4a574;
+  --color-teal: #7aa8a8;
+  --color-tan: #c4a574;
+  --color-wax: #24303c;
+  --color-live: #7dba96;
+  --color-wait: #b7c0c8;
+  --color-focus: #c4a574;
+  --color-header: #0e141c;
+  --color-on-header: #faf7f1;
+  --header-batik: url("/static/batik-header-night.jpg");
+}

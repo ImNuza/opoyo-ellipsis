@@ -15,15 +15,24 @@ final class SensorSession {
     var decibels: Double = -120
     var packetsSent = 0
     var status: String = "Idle"
+    var isCapturing = false
+    var takeRows = 0
+    var lastTakeURL: URL?
+    var label = "heeldrop"
     let nodeId = DeviceIdentity.nodeId
     let shortId = DeviceIdentity.shortId
     let modelName = DeviceIdentity.modelName
+
+    static let labels = ["heeldrop", "bag", "book", "pan", "door", "walk", "quiet", "tv"]
 
     private let motion = CMMotionManager()
     private let engine = AVAudioEngine()
     private let client = UDPClient()
     private let meter = DbMeter()
     private var tapInstalled = false
+    private var streamUDP = false
+    private var sensingForTakeOnly = false
+    private var capture: [(Int, Double, Double, Double, Double, Double)] = []
 
     init() {
         let stored = UserDefaults.standard.string(forKey: "opoyo.host") ?? ""
@@ -32,7 +41,8 @@ final class SensorSession {
         port = storedPort > 0 ? UInt16(storedPort) : 9000
     }
 
-    func start() {
+    func start(stream: Bool = true) {
+        streamUDP = stream
         UserDefaults.standard.set(host, forKey: "opoyo.host")
         UserDefaults.standard.set(Int(port), forKey: "opoyo.port")
 
@@ -47,6 +57,36 @@ final class SensorSession {
         }
     }
 
+    func startTake() {
+        capture.removeAll()
+        takeRows = 0
+        lastTakeURL = nil
+        isCapturing = true
+        if isRunning {
+            status = "Recording \(label)…"
+            return
+        }
+        sensingForTakeOnly = true
+        start(stream: false)
+    }
+
+    func stopTake() -> URL? {
+        isCapturing = false
+        let url = writeCSV()
+        lastTakeURL = url
+        takeRows = capture.count
+        if sensingForTakeOnly {
+            sensingForTakeOnly = false
+            stop()
+        }
+        if let url {
+            status = "Saved \(url.lastPathComponent). Send it."
+        } else {
+            status = "No samples — try again"
+        }
+        return url
+    }
+
     func stop() {
         motion.stopDeviceMotionUpdates()
         if tapInstalled {
@@ -59,7 +99,9 @@ final class SensorSession {
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
         client.close()
         isRunning = false
-        status = "Stopped"
+        if !isCapturing {
+            status = "Stopped"
+        }
     }
 
     private func beginSensing() {
@@ -75,7 +117,9 @@ final class SensorSession {
             return
         }
 
-        client.connect(host: host, port: port)
+        if streamUDP {
+            client.connect(host: host, port: port)
+        }
         motion.deviceMotionUpdateInterval = 1.0 / 50.0
         motion.startDeviceMotionUpdates(using: .xArbitraryZVertical, to: .main) { [weak self] data, error in
             guard let self else { return }
@@ -88,7 +132,13 @@ final class SensorSession {
         }
 
         isRunning = true
-        status = "Streaming to \(host):\(port)"
+        if isCapturing {
+            status = "Recording \(label)…"
+        } else if streamUDP {
+            status = "Streaming to \(host):\(port)"
+        } else {
+            status = "Sensing"
+        }
     }
 
     private func configureAudio() throws {
@@ -132,11 +182,42 @@ final class SensorSession {
         decibels = db
 
         let t = Int(Date().timeIntervalSince1970 * 1000)
-        let payload =
-            "{\"v\":2,\"id\":\"\(esc(nodeId))\",\"model\":\"\(esc(modelName))\",\"t\":\(t),\"ax\":\(fmt(ua.x)),\"ay\":\(fmt(ua.y)),\"az\":\(fmt(ua.z)),\"mag\":\(fmt(mag)),\"db\":\(fmt(db))}"
-        if let bytes = payload.data(using: .utf8) {
-            client.send(bytes)
-            packetsSent += 1
+        if isCapturing {
+            capture.append((t, ua.x, ua.y, ua.z, mag, db))
+            takeRows = capture.count
+        }
+        if streamUDP {
+            let payload =
+                "{\"v\":2,\"id\":\"\(esc(nodeId))\",\"model\":\"\(esc(modelName))\",\"t\":\(t),\"ax\":\(fmt(ua.x)),\"ay\":\(fmt(ua.y)),\"az\":\(fmt(ua.z)),\"mag\":\(fmt(mag)),\"db\":\(fmt(db))}"
+            if let bytes = payload.data(using: .utf8) {
+                client.send(bytes)
+                packetsSent += 1
+            }
+        }
+    }
+
+    private func writeCSV() -> URL? {
+        guard !capture.isEmpty else { return nil }
+        let fmtDate = DateFormatter()
+        fmtDate.locale = Locale(identifier: "en_US_POSIX")
+        fmtDate.dateFormat = "yyyyMMdd_HHmmss"
+        let stamp = fmtDate.string(from: Date())
+        let safe = label.replacingOccurrences(of: " ", with: "").lowercased()
+        let name = "\(safe)_\(stamp).csv"
+        let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("takes", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let url = dir.appendingPathComponent(name)
+        var body = "t,ax,ay,az,mag,db\n"
+        for row in capture {
+            body += "\(row.0),\(fmt(row.1)),\(fmt(row.2)),\(fmt(row.3)),\(fmt(row.4)),\(fmt(row.5))\n"
+        }
+        do {
+            try body.write(to: url, atomically: true, encoding: .utf8)
+            return url
+        } catch {
+            status = "Write failed: \(error.localizedDescription)"
+            return nil
         }
     }
 
