@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from datetime import datetime
 from pathlib import Path
 
 
@@ -34,6 +35,28 @@ def message_suspect(name: str) -> str:
 
 def message_confirmed(name: str) -> str:
     return f"OPOYO: no recovery, still down. Node {name}."
+
+
+def message_fall(room: str, timestamp_ms: int, confidence: float) -> str:
+    ts = datetime.fromtimestamp(timestamp_ms / 1000.0).strftime("%Y-%m-%d %H:%M:%S")
+    return (
+        f"OPOYO: fall. Room {room}. {ts}. confidence {confidence:.2f}."
+    )
+
+
+def send_sync(text: str) -> bool:
+    tok = token()
+    cid = chat_id()
+    if not tok or not cid:
+        return False
+    import httpx
+
+    url = f"https://api.telegram.org/bot{tok}/sendMessage"
+    try:
+        response = httpx.post(url, json={"chat_id": cid, "text": text}, timeout=8.0)
+        return response.status_code == 200
+    except Exception:
+        return False
 
 
 async def send(text: str) -> bool:

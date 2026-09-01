@@ -245,14 +245,22 @@
     .banner[data-state="cancelled"] {
       background: var(--color-wax);
     }
-    .banner[data-state="quiet"] #cancelBtn { display: none; }
-    .banner[data-state="recovered"] #cancelBtn,
-    .banner[data-state="cancelled"] #cancelBtn { display: none; }
-    .banner[data-state="suspect"] #cancelBtn,
-    .banner[data-state="confirmed"] #cancelBtn {
-      color: var(--color-navy);
-      background: var(--color-tan);
+    .banner[data-state="fall"] {
+      background: var(--color-navy);
+      color: var(--color-tan);
       border-color: var(--color-tan);
+    }
+    table.log {
+      width: 100%;
+      border-collapse: collapse;
+      font-family: var(--font-mono);
+      font-size: var(--text-sm);
+      margin: 0 0 var(--space-6);
+    }
+    table.log th, table.log td {
+      text-align: left;
+      padding: 8px 10px;
+      border-bottom: var(--rule) solid var(--color-line);
     }
     .tune {
       display: flex;
@@ -363,16 +371,12 @@
     <main>
       <section id="home" class="page is-on">
         <div class="banner" id="banner" data-state="quiet">
-          <strong id="bannerText">Quiet</strong>
-          <button type="button" id="cancelBtn">Cancel</button>
+          <strong id="bannerText">No inference yet</strong>
         </div>
         <div class="tune">
-          <label>Peak g<input id="peakG" type="number" min="0.05" max="3" step="0.05" value="0.40"></label>
-          <label>Rise max ms<input id="riseMs" type="number" min="20" max="800" step="10" value="80"></label>
-          <label>Decay min ms<input id="decayMin" type="number" min="20" max="400" step="10" value="150"></label>
-          <label class="check">Smash<input id="simpleMode" type="checkbox" checked></label>
+          <label>Escalate min confidence<input id="confThresh" type="number" min="0" max="1" step="0.01" value="0.90"></label>
           <button type="button" id="applyTune">Apply</button>
-          <span id="tuneNote">Last hit and why it was rejected show here.</span>
+          <span id="tuneNote">Cloud only if fall and confidence ≥ threshold.</span>
         </div>
         <h2>Combined floor</h2>
         <p class="note" id="comboNote">Max magnitude and max sound across live phones. x, y, z stay per phone.</p>
@@ -386,6 +390,14 @@
             <div class="chart-wrap"><canvas id="comboDb" width="900" height="220" aria-label="Combined sound"></canvas></div>
           </figure>
         </div>
+        <h2>Inference log</h2>
+        <p class="note">Every 1D CNN window. Raw vibration stays on this edge process.</p>
+        <table class="log" id="inferLog">
+          <thead>
+            <tr><th>timestamp</th><th>room</th><th>fall or no fall</th><th>confidence</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
         <h2>Phones</h2>
         <p class="note">Five slots. Join order names the card. Rename sticks to the phone id after quit.</p>
         <div class="cards" id="cards"></div>
@@ -443,25 +455,16 @@
         <p>Combined magnitude at a tick is the maximum <code>mag</code> among phones that sent a packet in the last 2.5 s. Combined sound is the maximum dB. Axes are not averaged. Each phone has its own heading.</p>
         <h2>Identity</h2>
         <p>A phone is not identified by MAC address. iOS will not give that to the app. The stable key is a UUID stored on the phone. The card also shows the model and a four-character short id. Rename on the dashboard is stored on the Mac against that UUID, so quit and rejoin keep the name.</p>
-        <h2>Live rule (Mac, not the browser)</h2>
-        <p>Detection runs in <code>server/detect.py</code> on the combined magnitude stream. The page only displays state. CS can replace <code>Detector.tick</code> later with a model that emits the same <code>FallEvent</code>.</p>
-        <p><code>FallEvent</code>: <code>id, t0, peak_g, rise_ms, decay_ms, node_id, state</code></p>
-        <p><code>state</code>: quiet → suspect → recovered | cancelled | confirmed</p>
-        <ol>
-          <li>Peak: combined mag ≥ <code>FUSION_PEAK_G</code> (default 0.4 g) for at least 2 samples.</li>
-          <li>Rise: quiet to peak ≤ <code>FUSION_RISE_MS</code> (80 ms). Slow sits fail this.</li>
-          <li>Decay: after peak, mag falls below quiet in 150–400 ms and stays there for 80 ms. Periodic hops fail the hold.</li>
-          <li>Suspect starts a 10 s demo clock (product copy is 60 s). Banner: “Suspect · 10 s to confirm”.</li>
-          <li>Extra mag ≥ 0.15 g after 500 ms → recovered. Cancel on this page → cancelled. Neither → confirmed.</li>
-        </ol>
-        <p>If a book still pages, raise <code>FUSION_PEAK_G</code> until the book is quiet and a knee-drop still fires. No acoustic veto in this slice.</p>
+        <h2>Edge inference (this process, not the browser)</h2>
+        <p>UDP packets land here. A 2 s window of magnitude is passed to a 1D CNN stub in <code>edge/infer.py</code>. The stub returns <code>timestamp, is_fall, confidence</code>. Every result is logged. The cloud is contacted only when <code>is_fall</code> and confidence ≥ <code>EDGE_ESCALATE_MIN_CONFIDENCE</code> (default 0.90).</p>
+        <p><code>InferenceResult</code>: <code>inference_id, timestamp, node_id, room, is_fall, confidence</code></p>
+        <p><code>FallEvent</code> (cloud only): same fields plus <code>threshold</code>, and <code>is_fall</code> is always true.</p>
         <h2>Telegram</h2>
-        <p>One-way alerts. The floor phone is the puck, not grandpa. Cancel is on this Mac.</p>
+        <p>The cloud process owns the escalation ladder. Telegram is rung 1 at t+0 after a gated fall. Twilio, secondary contact, and CareLine are stubs.</p>
         <ul>
-          <li>t+0 on suspect: “possible fall. Node {name}. Cancel on the Mac.”</li>
-          <li>t+10 on confirmed: “no recovery, still down.”</li>
-          <li>Recovered or cancelled: silence.</li>
-          <li>Target chat is <code>TELEGRAM_TARGET</code> in <code>.env</code> (hackathon group when set to <code>family</code>).</li>
+          <li>t+0: family Telegram with room, timestamp, confidence; stub call to the senior.</li>
+          <li>Senior “fine” closes the case. Otherwise wait 60 s for family, then secondary, then CareLine at t+180.</li>
+          <li>Target chat is <code>TELEGRAM_TARGET</code> in <code>.env</code>.</li>
         </ul>
         <h2>Phone keep-awake</h2>
         <p>iOS will not stream CoreMotion or mic in the background. Streaming turns the idle timer off. A Keep screen awake toggle keeps it off after Stop. That is the Friday path: face-down, screen on.</p>
@@ -470,19 +473,17 @@
           <li>This is a phone-on-tile proxy, not a bonded piezo.</li>
           <li>Campus Wi-Fi often blocks phone-to-laptop UDP. Personal hotspot is the trusted demo network.</li>
           <li>A sixth phone is dropped.</li>
-          <li>No labelled fall corpus. The live path is a kinematic rule, not a trained classifier.</li>
-          <li>Thresholds must be calibrated on the demo tile. Defaults are a starting point.</li>
+          <li>No labelled fall corpus. The live classifier is a stub that always returns no-fall.</li>
+          <li>Escalate threshold is calibrated in the field. Default 0.90.</li>
         </ul>
-        <h2>Tweak (CS)</h2>
-        <p>Env knobs, then restart uvicorn: <code>FUSION_PEAK_G</code>, <code>FUSION_QUIET_G</code>, <code>FUSION_RISE_MS</code>, <code>FUSION_DECAY_MIN_MS</code>, <code>FUSION_DECAY_MAX_MS</code>, <code>FUSION_DECAY_HOLD_MS</code>, <code>FUSION_RECOVER_G</code>, <code>FUSION_RECOVER_AFTER_MS</code>, <code>ESCALATE_S</code>.</p>
-        <p>Code: <code>server/detect.py</code> (rule), <code>server/notify.py</code> (copy + chat), <code>tests/test_detect.py</code> (knee vs book vs sit). Swap later: same <code>FallEvent</code>, disagree with the rule → no Telegram.</p>
+        <h2>Tweak</h2>
+        <p><code>EDGE_ESCALATE_MIN_CONFIDENCE</code>, <code>EDGE_CLOUD_URL</code>. Threshold can also be applied on this page without restart.</p>
+        <p>Code: <code>edge/infer.py</code> (stub), <code>edge/gate.py</code> (threshold), <code>server/tree.py</code> (ladder), <code>server/notify.py</code> (Telegram copy).</p>
         <h2>Not done yet</h2>
         <ul>
-          <li>YAMNet or other pretrained audio veto.</li>
-          <li>1D-CNN on labelled windows. Matteo / Gilchris own that.</li>
-          <li>Acoustic veto if peak_g cannot separate book and knee.</li>
-          <li>Product 60 s escalate (demo clock is 10 s).</li>
-          <li>Grandpa “I’m OK” on his own phone. Not on the puck.</li>
+          <li>Trained 1D-CNN weights behind the same <code>infer(window)</code> signature.</li>
+          <li>YAMNet acoustic veto.</li>
+          <li>Live Twilio and CareLine adapters.</li>
           <li>True background streaming. iOS will not do that honestly.</li>
           <li>Piezo puck hardware.</li>
         </ul>
@@ -491,7 +492,7 @@
 
     <footer>
       <p>Phone is a proxy. Product is a floor puck.</p>
-      <p id="foot">No model. Signal only.</p>
+      <p id="foot">Edge stub CNN. Cloud only on gated falls.</p>
     </footer>
   </div>
   <script>
@@ -505,7 +506,7 @@
     let dropped = 0;
     let combined = { mag: 0, db: -120, live: 0, hz: 0, packets: 0 };
     let lastRecv = 0;
-    let detect = { state: "quiet", banner: "Quiet", remaining_s: 0, cfg: {} };
+    let inference = { latest: null, log: [], cfg: { escalate_min_confidence: 0.9 } };
     let tuneDirty = false;
     let tuneLocked = false;
 
@@ -516,13 +517,10 @@
     const comboNote = document.getElementById("comboNote");
     const bannerEl = document.getElementById("banner");
     const bannerText = document.getElementById("bannerText");
-    const cancelBtn = document.getElementById("cancelBtn");
-    const peakGEl = document.getElementById("peakG");
-    const riseMsEl = document.getElementById("riseMs");
-    const decayMinEl = document.getElementById("decayMin");
-    const simpleEl = document.getElementById("simpleMode");
+    const confThreshEl = document.getElementById("confThresh");
     const applyTune = document.getElementById("applyTune");
     const tuneNote = document.getElementById("tuneNote");
+    const inferLogBody = document.querySelector("#inferLog tbody");
 
     function ink() {
       return getComputedStyle(document.body).getPropertyValue("--color-navy").trim() || "#1e3a5f";
@@ -723,42 +721,49 @@
     function fillTune(cfg, force) {
       if (!cfg) return;
       if (!force && (tuneDirty || tuneLocked)) return;
-      if (typeof cfg.peak_g === "number") peakGEl.value = String(cfg.peak_g);
-      if (typeof cfg.rise_ms === "number") riseMsEl.value = String(cfg.rise_ms);
-      if (typeof cfg.decay_min_ms === "number") decayMinEl.value = String(cfg.decay_min_ms);
-      if (typeof cfg.simple === "boolean") simpleEl.checked = cfg.simple;
+      if (typeof cfg.escalate_min_confidence === "number") {
+        confThreshEl.value = String(cfg.escalate_min_confidence);
+      }
       tuneLocked = true;
     }
 
-    function applyDetect(d) {
-      if (!d || !d.state) return;
-      detect = d;
-      bannerEl.setAttribute("data-state", d.state);
-      bannerText.textContent = d.banner || "Quiet";
-      footEl.textContent = "Dropped extras: " + dropped + ". Rule: " + (d.state || "quiet") + ".";
+    function applyInference(d) {
+      if (!d) return;
+      inference = d;
+      const latest = d.latest;
+      if (latest && latest.is_fall) {
+        bannerEl.setAttribute("data-state", "fall");
+        bannerText.textContent = "Fall · " + Number(latest.confidence).toFixed(2);
+      } else if (latest) {
+        bannerEl.setAttribute("data-state", "quiet");
+        bannerText.textContent = "No fall · " + Number(latest.confidence).toFixed(2);
+      } else {
+        bannerEl.setAttribute("data-state", "quiet");
+        bannerText.textContent = "No inference yet";
+      }
+      const thresh = d.cfg && d.cfg.escalate_min_confidence;
+      footEl.textContent = "Dropped extras: " + dropped + ". Threshold: " + (typeof thresh === "number" ? thresh.toFixed(2) : "-") + ".";
       fillTune(d.cfg || {});
-      const hit = typeof d.last_hit_g === "number" ? d.last_hit_g.toFixed(3) + " g" : "-";
-      const why = d.last_reject ? " · " + d.last_reject : "";
-      tuneNote.textContent = "Last hit " + hit + why;
+      inferLogBody.innerHTML = "";
+      (d.log || []).slice().reverse().forEach((row) => {
+        const tr = document.createElement("tr");
+        const when = row.timestamp ? new Date(row.timestamp).toISOString().replace("T", " ").slice(0, 19) : "-";
+        tr.innerHTML = "<td>" + when + "</td><td>" + (row.room || "-") + "</td><td>" + (row.is_fall ? "fall" : "no fall") + "</td><td>" + Number(row.confidence).toFixed(2) + "</td>";
+        inferLogBody.appendChild(tr);
+      });
     }
 
-    [peakGEl, riseMsEl, decayMinEl, simpleEl].forEach((el) => {
-      el.addEventListener("pointerdown", () => { tuneDirty = true; });
-      el.addEventListener("input", () => { tuneDirty = true; });
-      el.addEventListener("change", () => { tuneDirty = true; });
-    });
+    confThreshEl.addEventListener("pointerdown", () => { tuneDirty = true; });
+    confThreshEl.addEventListener("input", () => { tuneDirty = true; });
     applyTune.addEventListener("pointerdown", () => { tuneDirty = true; });
 
     applyTune.addEventListener("click", async () => {
       try {
-        const r = await fetch("/api/detect/config", {
+        const r = await fetch("/api/edge/config", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            peak_g: Number(peakGEl.value),
-            rise_ms: Number(riseMsEl.value),
-            decay_min_ms: Number(decayMinEl.value),
-            simple: simpleEl.checked
+            escalate_min_confidence: Number(confThreshEl.value)
           })
         });
         const d = await r.json();
@@ -767,16 +772,8 @@
           return;
         }
         tuneDirty = false;
-        fillTune(d.cfg || {}, true);
-        applyDetect(d);
-      } catch (e) {}
-    });
-
-    cancelBtn.addEventListener("click", async () => {
-      try {
-        const r = await fetch("/api/cancel", { method: "POST" });
-        const d = await r.json();
-        applyDetect(d);
+        applyInference(d);
+        tuneNote.textContent = "Threshold " + Number(d.cfg.escalate_min_confidence).toFixed(2);
       } catch (e) {}
     });
 
@@ -785,7 +782,7 @@
       if (Array.isArray(s.slots)) slots = s.slots;
       if (s.combined) combined = s.combined;
       if (typeof s.dropped === "number") dropped = s.dropped;
-      if (s.detect) applyDetect(s.detect);
+      if (s.inference) applyInference(s.inference);
       if (s.histories) {
         Object.keys(s.histories).forEach((id) => {
           const buf = ensure(id);
@@ -806,10 +803,10 @@
         });
       }
       renderCards();
-      draw(document.getElementById("comboMag"), comboMagBuf, 0, magScale(comboMagBuf), ink(), "g", detect.cfg && detect.cfg.peak_g);
+      draw(document.getElementById("comboMag"), comboMagBuf, 0, magScale(comboMagBuf), ink(), "g");
       draw(document.getElementById("comboDb"), comboDbBuf, -80, 0, tan(), "dB");
       comboNote.textContent = (combined.live || 0) + " live · combined " + fmt(combined.mag, 3) + " g · " + fmt(combined.db, 1) + " dB · " + fmt(combined.hz, 1) + " Hz";
-      if (!s.detect) footEl.textContent = "Dropped extras: " + dropped + ". Rule: " + (detect.state || "quiet") + ".";
+      if (!s.inference) footEl.textContent = "Dropped extras: " + dropped + ".";
       const hash = location.hash || "#/";
       if (hash.startsWith("#/phone/")) renderPhone(hash.slice(8));
     }
@@ -844,10 +841,10 @@
         existing.short = p.short;
         existing.from = p.from;
       }
-      draw(document.getElementById("comboMag"), comboMagBuf, 0, magScale(comboMagBuf), ink(), "g", detect.cfg && detect.cfg.peak_g);
+      draw(document.getElementById("comboMag"), comboMagBuf, 0, magScale(comboMagBuf), ink(), "g");
       draw(document.getElementById("comboDb"), comboDbBuf, -80, 0, tan(), "dB");
       comboNote.textContent = (combined.live || 0) + " live · combined " + fmt(combined.mag, 3) + " g · " + fmt(combined.db, 1) + " dB · " + fmt(combined.hz, 1) + " Hz";
-      if (p.detect) applyDetect(p.detect);
+      if (p.inference) applyInference(p.inference);
       if ((location.hash || "#/").startsWith("#/phone/" + p.id)) renderPhone(p.id);
     }
 
@@ -859,7 +856,7 @@
         try { p = JSON.parse(ev.data); } catch (e) { return; }
         if (p && p.k === "state") applyState(p);
         else if (p && p.k === "tick") onTick(p);
-        else if (p && p.k === "detect") applyDetect(p);
+        else if (p && p.k === "inference") applyInference(p);
         else if (p && p.slots) applyState(p);
       };
       ws.onclose = () => setTimeout(connect, 1000);

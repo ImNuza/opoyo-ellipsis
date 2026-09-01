@@ -2,47 +2,42 @@
 
 Passive floor-vibration fall detector. This repo is the hackathon prototype.
 
-The production node is a piezo puck bonded to the slab. This build uses iPhones on the floor as a proxy: accelerometer plus a sound-level meter, streamed to a Mac. A kinematic rule on the Mac decides suspect / recovered / confirmed. Telegram fires. No trained model yet.
+The production node is a piezo puck bonded to the slab. This build uses iPhones on the floor as a proxy: accelerometer plus a sound-level meter, streamed to an **edge** process. A stub 1D CNN classifies each 2 s window. The **cloud** process runs the escalation ladder. Telegram fires only after a gated fall.
 
 ## Live path
 
 1. iOS app `phone/OpoyoPhone` reads user-acceleration at 50 Hz and microphone RMS in dB. Screen stays on while streaming.
-2. Packets go over UDP JSON to the Mac (`v, id, model, t, ax, ay, az, mag, db`).
-3. FastAPI on the Mac listens on UDP 9000 and shows up to five phones at http://127.0.0.1:8000
-4. `server/detect.py` scores combined magnitude (peak, rise, decay). Suspect starts a 10 s demo clock. Cancel is on the dashboard. Extra motion recovers. Timeout confirms.
-5. Telegram: t+0 on suspect, t+10 on confirmed. Target chat is `TELEGRAM_TARGET` in `.env`.
+2. Packets go over UDP JSON to the edge (`v, id, model, t, ax, ay, az, mag, db`).
+3. Edge FastAPI listens on UDP 9000 and shows phones at http://127.0.0.1:8000
+4. `edge/infer.py` `StubCnn.infer` returns `{timestamp, is_fall, confidence}`. Every result is appended to `edge/data/inference.jsonl`.
+5. Edge POSTs a `FallEvent` to the cloud only when `is_fall` and `confidence >= EDGE_ESCALATE_MIN_CONFIDENCE` (default 0.90, also on the dashboard).
+6. Cloud FastAPI on http://127.0.0.1:8001 runs Figure A5: Telegram family + stub senior call at t+0, family wait 60 s, secondary stub, CareLine stub at t+180.
 
-Each phone carries a UUID created on first launch. Combined traces use max magnitude and max dB. Axes stay per phone.
+Each phone carries a UUID created on first launch. Combined traces use max magnitude and max dB. Axes stay per phone. Raw vibration never leaves the edge process.
 
-CS later: replace `Detector.tick` with a model that emits the same `FallEvent`. Disagree with the rule → no Telegram. QnA on the dashboard lists env knobs.
+Swap `StubCnn` for a trained 1D CNN with the same `infer(window) -> InferenceResult` signature.
 
-Not in this slice: YAMNet, 1D-CNN, piezo hardware, true background streaming.
-
-## Mac receiver
+## Run both processes
 
 ```bash
-cd "/Users/dewa/Documents/Projects/Ellipsis Tech Series/opoyo-ellipsis"
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-python3 -m uvicorn server.app:app --host 0.0.0.0 --port 8000
+python3 -m uvicorn edge.app:app --host 0.0.0.0 --port 8000
+python3 -m uvicorn server.app:app --host 127.0.0.1 --port 8001
 ```
 
 Open http://127.0.0.1:8000
 
 Copy `.env.example` to `.env` and fill Telegram. Do not commit `.env`.
 
-Without a phone, a synthetic knee-drop:
+Without a phone, a synthetic stream:
 
 ```bash
-python3 server/fake_phone.py --nodes 1 --impact knee --seconds 4
+python3 phone/fake_phone.py --nodes 1 --impact knee --seconds 4
 ```
 
-A book-shaped spike (should stay Quiet):
-
-```bash
-python3 server/fake_phone.py --nodes 1 --impact book --seconds 3
-```
+The stub CNN always returns no-fall, so this will fill the inference log and will not create a cloud case.
 
 ## iPhone app
 
@@ -62,6 +57,12 @@ If the phone is the hotspot, the Mac address is almost always `172.20.10.11`. Ca
 
 ```json
 {"v":2,"id":"c0a1...","model":"iPhone 17 Pro Max","t":1735689600123,"ax":0.01,"ay":0.0,"az":-0.02,"mag":0.03,"db":-41.2}
+```
+
+## Tests
+
+```bash
+pytest
 ```
 
 ## Team
