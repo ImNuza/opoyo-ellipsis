@@ -462,9 +462,8 @@
         <h2>Telegram</h2>
         <p>The cloud process owns the escalation ladder. Telegram is rung 1 at t+0 after a gated fall. Twilio, secondary contact, and CareLine are stubs.</p>
         <ul>
-          <li>t+0: family Telegram with room, timestamp, confidence; stub call to the senior.</li>
-          <li>Senior “fine” closes the case. Otherwise wait 60 s for family, then secondary, then CareLine at t+180.</li>
-          <li>Target chat is <code>TELEGRAM_TARGET</code> in <code>.env</code>.</li>
+          <li>t+0: Telegram next of kin (<code>TELEGRAM_CHAT_ID_NEXT_OF_KIN</code>) with room, timestamp, confidence; Twilio stub call to <code>SENIOR_PHONE</code>.</li>
+          <li>Senior “fine” closes the case. Otherwise wait 60 s, then Telegram secondary (<code>TELEGRAM_CHAT_ID_SECONDARY</code>), then CareLine at t+180.</li>
         </ul>
         <h2>Phone keep-awake</h2>
         <p>iOS will not stream CoreMotion or mic in the background. Streaming turns the idle timer off. A Keep screen awake toggle keeps it off after Stop. That is the Friday path: face-down, screen on.</p>

@@ -5,10 +5,10 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from edge.app import create_app as create_edge
-from server.adapters import RecordingAdapter
 from server.app import create_app as create_cloud
-from server.tree import EscalationTree, FakeClock
+from server.decision_tree import DecisionTree
 from shared.schemas import AckEvent, EdgeConfig, FallEvent
+from tests.fakes import FakeClock, FakeSender
 
 
 def _edge_cfg() -> EdgeConfig:
@@ -31,15 +31,19 @@ def _fall() -> dict:
     ).model_dump()
 
 
-def test_cloud_post_events_returns_case():
-    tree = EscalationTree(
+def _cloud_tree() -> DecisionTree:
+    return DecisionTree(
         clock=FakeClock(),
-        telegram=RecordingAdapter(),
-        twilio=RecordingAdapter(),
-        secondary=RecordingAdapter(),
-        careline=RecordingAdapter(),
+        telegram=FakeSender(),
+        twilio=FakeSender(),
+        next_of_kin_chat_id="kin",
+        secondary_chat_id="sec",
+        senior_phone="+6500000000",
     )
-    with TestClient(create_cloud(tree=tree)) as client:
+
+
+def test_cloud_post_events_returns_case():
+    with TestClient(create_cloud(tree=_cloud_tree())) as client:
         response = client.post("/events", json=_fall())
         assert response.status_code == 202
         body = response.json()
@@ -48,14 +52,7 @@ def test_cloud_post_events_returns_case():
 
 
 def test_cloud_ack_moves_state():
-    tree = EscalationTree(
-        clock=FakeClock(),
-        telegram=RecordingAdapter(),
-        twilio=RecordingAdapter(),
-        secondary=RecordingAdapter(),
-        careline=RecordingAdapter(),
-    )
-    with TestClient(create_cloud(tree=tree)) as client:
+    with TestClient(create_cloud(tree=_cloud_tree())) as client:
         created = client.post("/events", json=_fall()).json()
         case_id = created["case_id"]
         ack = AckEvent(
@@ -87,6 +84,8 @@ def test_edge_config_roundtrip(tmp_path: Path):
 def test_edge_has_no_raw_sample_cloud_dump():
     app = create_edge(enable_udp=False, cfg=_edge_cfg())
     paths = {getattr(route, "path", "") for route in app.routes}
-    forbidden = [p for p in paths if "sample" in p.lower() and "cloud" in p.lower()]
+    forbidden = [
+        p for p in paths if "sample" in p.lower() and "cloud" in p.lower()
+    ]
     assert forbidden == []
     assert "/events" not in paths

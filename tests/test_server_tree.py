@@ -1,8 +1,13 @@
 from __future__ import annotations
 
+from server.decision_tree import DecisionTree, fall_message
 from shared.schemas import AckEvent, FallEvent
-from server.adapters import RecordingAdapter
-from server.tree import EscalationTree, FakeClock
+from tests.fakes import FakeClock, FakeSender
+
+
+KIN = "kin-chat"
+SECONDARY = "sec-chat"
+PHONE = "+6500000000"
 
 
 def _event() -> FallEvent:
@@ -18,41 +23,40 @@ def _event() -> FallEvent:
     )
 
 
-def _tree() -> tuple[EscalationTree, FakeClock, dict[str, RecordingAdapter]]:
+def _tree() -> tuple[DecisionTree, FakeClock, FakeSender, FakeSender]:
     clock = FakeClock(0.0)
-    adapters = {
-        "telegram": RecordingAdapter(),
-        "twilio": RecordingAdapter(),
-        "secondary": RecordingAdapter(),
-        "careline": RecordingAdapter(),
-    }
-    tree = EscalationTree(
+    telegram = FakeSender()
+    twilio = FakeSender()
+    tree = DecisionTree(
         clock=clock,
-        telegram=adapters["telegram"],
-        twilio=adapters["twilio"],
-        secondary=adapters["secondary"],
-        careline=adapters["careline"],
+        telegram=telegram,
+        twilio=twilio,
+        next_of_kin_chat_id=KIN,
+        secondary_chat_id=SECONDARY,
+        senior_phone=PHONE,
     )
-    return tree, clock, adapters
+    return tree, clock, telegram, twilio
+
+
+def test_fall_message_includes_room_and_confidence():
+    text = fall_message(_event())
+    assert "Bathroom" in text
+    assert "0.94" in text
 
 
 def test_ingest_dispatches_rung1():
-    tree, _clock, adapters = _tree()
+    tree, _clock, telegram, twilio = _tree()
     case = tree.ingest(_event())
     assert case.state == "rung1_dispatched"
-    assert len(adapters["telegram"].commands) == 1
-    assert len(adapters["twilio"].commands) == 1
-    cmd = adapters["telegram"].commands[0]
-    assert cmd.at_s == 0
-    assert cmd.rung == "family_telegram"
-    assert cmd.event.room == "Bathroom"
-    assert cmd.event.timestamp == 1735689602123
-    assert cmd.event.confidence == 0.94
-    assert adapters["twilio"].commands[0].rung == "senior_call"
+    assert len(telegram.sent) == 1
+    assert telegram.sent[0][0] == KIN
+    assert "Bathroom" in telegram.sent[0][1]
+    assert "0.94" in telegram.sent[0][1]
+    assert twilio.sent == [(PHONE, telegram.sent[0][1])]
 
 
 def test_senior_fine_closes_and_blocks_later_rungs():
-    tree, clock, adapters = _tree()
+    tree, clock, telegram, twilio = _tree()
     case = tree.ingest(_event())
     tree.on_ack(
         AckEvent(case_id=case.case_id, actor="senior", outcome="fine", timestamp=1)
@@ -62,27 +66,30 @@ def test_senior_fine_closes_and_blocks_later_rungs():
     tree.on_tick()
     clock.advance(120)
     tree.on_tick()
-    assert adapters["secondary"].commands == []
-    assert adapters["careline"].commands == []
+    assert len(telegram.sent) == 1
+    assert len(twilio.sent) == 1
 
 
 def test_senior_no_answer_waits_for_family():
-    tree, _clock, adapters = _tree()
+    tree, _clock, telegram, twilio = _tree()
     case = tree.ingest(_event())
     tree.on_ack(
-        AckEvent(case_id=case.case_id, actor="senior", outcome="no_answer", timestamp=1)
+        AckEvent(
+            case_id=case.case_id, actor="senior", outcome="no_answer", timestamp=1
+        )
     )
     assert tree.cases[case.case_id].state == "awaiting_family"
-    assert len(adapters["telegram"].commands) == 1
-    assert len(adapters["twilio"].commands) == 1
-    assert adapters["secondary"].commands == []
+    assert len(telegram.sent) == 1
+    assert len(twilio.sent) == 1
 
 
 def test_family_taken_at_t30_stops_ladder():
-    tree, clock, adapters = _tree()
+    tree, clock, telegram, twilio = _tree()
     case = tree.ingest(_event())
     tree.on_ack(
-        AckEvent(case_id=case.case_id, actor="senior", outcome="no_answer", timestamp=1)
+        AckEvent(
+            case_id=case.case_id, actor="senior", outcome="no_answer", timestamp=1
+        )
     )
     clock.advance(30)
     tree.on_ack(
@@ -93,57 +100,72 @@ def test_family_taken_at_t30_stops_ladder():
     tree.on_tick()
     clock.advance(120)
     tree.on_tick()
-    assert adapters["secondary"].commands == []
-    assert adapters["careline"].commands == []
+    assert len(telegram.sent) == 1
+    assert len(twilio.sent) == 1
 
 
 def test_no_family_at_t60_alerts_secondary():
-    tree, clock, adapters = _tree()
+    tree, clock, telegram, _twilio = _tree()
     case = tree.ingest(_event())
     tree.on_ack(
-        AckEvent(case_id=case.case_id, actor="senior", outcome="not_fine", timestamp=1)
+        AckEvent(
+            case_id=case.case_id, actor="senior", outcome="not_fine", timestamp=1
+        )
     )
     clock.advance(60)
     tree.on_tick()
     assert tree.cases[case.case_id].state == "secondary_alerted"
-    assert len(adapters["secondary"].commands) == 1
+    assert len(telegram.sent) == 2
+    assert telegram.sent[1][0] == SECONDARY
+    assert "Bathroom" in telegram.sent[1][1]
 
 
 def test_secondary_taken_at_t90_skips_careline():
-    tree, clock, adapters = _tree()
+    tree, clock, telegram, twilio = _tree()
     case = tree.ingest(_event())
     tree.on_ack(
-        AckEvent(case_id=case.case_id, actor="senior", outcome="no_answer", timestamp=1)
+        AckEvent(
+            case_id=case.case_id, actor="senior", outcome="no_answer", timestamp=1
+        )
     )
     clock.advance(60)
     tree.on_tick()
     clock.advance(30)
     tree.on_ack(
-        AckEvent(case_id=case.case_id, actor="secondary", outcome="taken", timestamp=90)
+        AckEvent(
+            case_id=case.case_id, actor="secondary", outcome="taken", timestamp=90
+        )
     )
     assert tree.cases[case.case_id].state == "resolved"
     clock.advance(90)
     tree.on_tick()
-    assert adapters["careline"].commands == []
+    assert len(telegram.sent) == 2
+    assert len(twilio.sent) == 1
+    assert all(c.rung != "careline" for c in tree.cases[case.case_id].commands)
 
 
 def test_nobody_at_t180_alerts_careline():
-    tree, clock, adapters = _tree()
+    tree, clock, telegram, twilio = _tree()
     case = tree.ingest(_event())
     tree.on_ack(
-        AckEvent(case_id=case.case_id, actor="senior", outcome="no_answer", timestamp=1)
+        AckEvent(
+            case_id=case.case_id, actor="senior", outcome="no_answer", timestamp=1
+        )
     )
     clock.advance(60)
     tree.on_tick()
     clock.advance(120)
     tree.on_tick()
     assert tree.cases[case.case_id].state == "careline_alerted"
-    assert len(adapters["careline"].commands) == 1
-    assert adapters["careline"].commands[0].at_s == 180
+    careline = [c for c in tree.cases[case.case_id].commands if c.rung == "careline"]
+    assert len(careline) == 1
+    assert careline[0].at_s == 180
+    assert len(telegram.sent) == 2
+    assert len(twilio.sent) == 1
 
 
 def test_ack_on_terminal_is_noop():
-    tree, _clock, adapters = _tree()
+    tree, _clock, telegram, _twilio = _tree()
     case = tree.ingest(_event())
     tree.on_ack(
         AckEvent(case_id=case.case_id, actor="senior", outcome="fine", timestamp=1)
@@ -152,13 +174,14 @@ def test_ack_on_terminal_is_noop():
         AckEvent(case_id=case.case_id, actor="family", outcome="taken", timestamp=2)
     )
     assert tree.cases[case.case_id].state == "false_alarm_closed"
-    assert len(adapters["telegram"].commands) == 1
+    assert len(telegram.sent) == 1
 
 
 def test_duplicate_event_id_does_not_start_second_case():
-    tree, _clock, adapters = _tree()
+    tree, _clock, telegram, twilio = _tree()
     first = tree.ingest(_event())
     second = tree.ingest(_event())
     assert first.case_id == second.case_id
     assert len(tree.cases) == 1
-    assert len(adapters["telegram"].commands) == 1
+    assert len(telegram.sent) == 1
+    assert len(twilio.sent) == 1

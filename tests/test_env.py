@@ -48,11 +48,11 @@ def test_live_edge_app_fails_without_env(monkeypatch):
 
 
 def test_live_cloud_app_fails_without_telegram(monkeypatch):
-    monkeypatch.setattr("server.notify.load_env", lambda: None)
+    monkeypatch.setattr("server.app.load_dotenv", lambda *args, **kwargs: None)
     monkeypatch.delenv("TELEGRAM_BOT_TOKEN", raising=False)
-    monkeypatch.delenv("TELEGRAM_BOT_API", raising=False)
-    monkeypatch.delenv("TELEGRAM_TARGET", raising=False)
-    monkeypatch.delenv("TELEGRAM_CHAT_ID", raising=False)
+    monkeypatch.delenv("TELEGRAM_CHAT_ID_NEXT_OF_KIN", raising=False)
+    monkeypatch.delenv("TELEGRAM_CHAT_ID_SECONDARY", raising=False)
+    monkeypatch.delenv("SENIOR_PHONE", raising=False)
     with pytest.raises(RuntimeError, match="missing required environment variable"):
         create_cloud()
 
