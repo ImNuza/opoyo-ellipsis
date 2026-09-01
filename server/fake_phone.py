@@ -19,6 +19,32 @@ MODELS = [
 ]
 
 
+def mag_for(kind: str, elapsed: float, nidx: int) -> float:
+    if kind == "knee":
+        if elapsed < 0.4:
+            return 0.01
+        local = elapsed - 0.4
+        if local < 0.06:
+            return 0.01 + (0.72 - 0.01) * (local / 0.06)
+        if local < 0.10:
+            return 0.72
+        if local < 0.30:
+            return 0.72 - (0.72 - 0.01) * ((local - 0.10) / 0.20)
+        return 0.01
+    if kind == "book":
+        if elapsed < 0.4:
+            return 0.01
+        local = elapsed - 0.4
+        if local < 0.04:
+            return 1.2
+        return 0.01
+    phase = elapsed * (1.4 + nidx * 0.35) + nidx
+    bump = 3.2 + nidx * 1.1 < elapsed < 4.4 + nidx * 1.1
+    if bump:
+        return 0.02 + 0.55 * abs(math.sin(phase))
+    return 0.012 + 0.01 * math.sin(phase * 7)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--host", default="127.0.0.1")
@@ -27,6 +53,7 @@ def main() -> None:
     parser.add_argument("--seconds", type=float, default=8)
     parser.add_argument("--nodes", type=int, default=3)
     parser.add_argument("--ids", default="", help="comma-separated stable ids")
+    parser.add_argument("--impact", default="", choices=["", "knee", "book"])
     args = parser.parse_args()
 
     count = max(1, min(args.nodes, 5))
@@ -42,13 +69,13 @@ def main() -> None:
     n = int(args.seconds * args.hz)
     t0 = time.time()
     sent = 0
-    for i in range(n):
+    kind = args.impact or ""
+    for _i in range(n):
         t = time.time()
         elapsed = t - t0
         for nidx, nid in enumerate(ids):
+            mag = mag_for(kind, elapsed, nidx)
             phase = elapsed * (1.4 + nidx * 0.35) + nidx
-            bump = 3.2 + nidx * 1.1 < elapsed < 4.4 + nidx * 1.1
-            mag = 0.02 + 0.55 * abs(math.sin(phase)) if bump else 0.012 + 0.01 * math.sin(phase * 7)
             ax = mag * (0.15 + 0.05 * nidx)
             ay = mag * 0.08 * math.sin(phase)
             az = mag

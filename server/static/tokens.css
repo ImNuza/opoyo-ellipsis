@@ -38,7 +38,7 @@
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --dur: 180ms;
   --rule: 1px;
-  --header-batik: url("/static/header-batik.svg");
+  --header-batik: url("/static/batik-header.jpg");
 }
 
 html[data-theme="night"] {
@@ -56,4 +56,5 @@ html[data-theme="night"] {
   --color-focus: #c4a574;
   --color-header: #0e141c;
   --color-on-header: #faf7f1;
+  --header-batik: url("/static/batik-header-night.jpg");
 }

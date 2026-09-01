@@ -2,21 +2,31 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import time
 from collections import deque
 from pathlib import Path
 from typing import Any
 
+from dotenv import load_dotenv
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+
+from server.detect import Detector, DetectorConfig
+from server import notify
+
+ROOT = Path(__file__).resolve().parents[1]
+load_dotenv(ROOT / ".env")
+notify.load_env()
 
 UDP_HOST = "0.0.0.0"
 UDP_PORT = 9000
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 DATA_DIR = Path(__file__).resolve().parent / "data"
 NAMES_PATH = DATA_DIR / "names.json"
+DETECT_PATH = DATA_DIR / "detect.json"
 MAX_NODES = 5
 MAX_HISTORY = 220
 LIVE_S = 2.5
@@ -38,6 +48,30 @@ def _node_id(packet: dict[str, Any], addr: tuple[str, int]) -> str:
         if cleaned:
             return cleaned
     return addr[0]
+
+
+def _env_float(name: str, default: float) -> float:
+    raw = os.getenv(name)
+    if raw is None or not str(raw).strip():
+        return default
+    try:
+        return float(raw)
+    except ValueError:
+        return default
+
+
+def detector_config() -> DetectorConfig:
+    return DetectorConfig(
+        peak_g=_env_float("FUSION_PEAK_G", 0.4),
+        quiet_g=_env_float("FUSION_QUIET_G", 0.05),
+        rise_ms=_env_float("FUSION_RISE_MS", 80.0),
+        decay_min_ms=_env_float("FUSION_DECAY_MIN_MS", 150.0),
+        decay_max_ms=_env_float("FUSION_DECAY_MAX_MS", 400.0),
+        decay_hold_ms=_env_float("FUSION_DECAY_HOLD_MS", 80.0),
+        recover_g=_env_float("FUSION_RECOVER_G", 0.15),
+        recover_after_ms=_env_float("FUSION_RECOVER_AFTER_MS", 500.0),
+        escalate_s=_env_float("ESCALATE_S", 10.0),
+    )
 
 
 class Node:
@@ -103,7 +137,9 @@ class Hub:
         self.packets = 0
         self.lock = asyncio.Lock()
         self.names: dict[str, str] = {}
+        self.detector = Detector(detector_config())
         self._load_names()
+        self._load_detect()
 
     def _load_names(self) -> None:
         if not NAMES_PATH.exists():
@@ -119,6 +155,37 @@ class Hub:
         DATA_DIR.mkdir(parents=True, exist_ok=True)
         NAMES_PATH.write_text(json.dumps(self.names, indent=2))
 
+    def _load_detect(self) -> None:
+        if not DETECT_PATH.exists():
+            return
+        try:
+            data = json.loads(DETECT_PATH.read_text())
+        except (OSError, json.JSONDecodeError):
+            return
+        if isinstance(data, dict):
+            self.detector.update_cfg(**data)
+
+    def _save_detect(self) -> None:
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        cfg = self.detector.cfg
+        DETECT_PATH.write_text(
+            json.dumps(
+                {
+                    "peak_g": cfg.peak_g,
+                    "quiet_g": cfg.quiet_g,
+                    "min_peak_samples": cfg.min_peak_samples,
+                    "rise_ms": cfg.rise_ms,
+                    "decay_min_ms": cfg.decay_min_ms,
+                    "decay_max_ms": cfg.decay_max_ms,
+                    "decay_hold_ms": cfg.decay_hold_ms,
+                    "recover_g": cfg.recover_g,
+                    "recover_after_ms": cfg.recover_after_ms,
+                    "escalate_s": cfg.escalate_s,
+                },
+                indent=2,
+            )
+        )
+
     def _combined(self, now: float) -> dict[str, Any]:
         live = [n for n in self.nodes.values() if n.live(now) and n.latest]
         if not live:
@@ -133,6 +200,12 @@ class Hub:
             "hz": round(hz, 1),
             "packets": self.packets,
         }
+
+    def _name_for(self, node_id: str) -> str:
+        node = self.nodes.get(node_id)
+        if node is not None:
+            return node.name
+        return node_id[:8] or "phone"
 
     async def ingest(self, packet: dict[str, Any]) -> dict[str, Any] | None:
         now = time.time()
@@ -176,6 +249,8 @@ class Hub:
                     "db": combined["db"],
                 }
             )
+            changes = self.detector.tick(now, combined["mag"], nid)
+            detect = self.detector.public(now)
             tick = {
                 "k": "tick",
                 "id": nid,
@@ -193,8 +268,10 @@ class Hub:
                 "packets": node.packets,
                 "hz": node.hz(now),
                 "combined": combined,
+                "detect": detect,
             }
             clients = list(self.clients)
+            name_for = self._name_for
 
         stale: list[WebSocket] = []
         for ws in clients:
@@ -206,6 +283,8 @@ class Hub:
             async with self.lock:
                 for ws in stale:
                     self.clients.discard(ws)
+        if changes:
+            await _emit_detect(changes, name_for)
         return tick
 
     async def snapshot(self) -> dict[str, Any]:
@@ -239,6 +318,7 @@ class Hub:
                 "histories": histories,
                 "dropped": self.dropped,
                 "max": MAX_NODES,
+                "detect": self.detector.public(now),
             }
 
     async def rename(self, node_id: str, name: str) -> dict[str, Any] | None:
@@ -258,6 +338,69 @@ class Hub:
             public = node.public(now)
         return public
 
+    async def cancel(self) -> dict[str, Any]:
+        now = time.time()
+        async with self.lock:
+            self.detector.cancel(now)
+            detect = self.detector.public(now)
+            clients = list(self.clients)
+        payload = {"k": "detect", **detect}
+        stale: list[WebSocket] = []
+        for ws in clients:
+            try:
+                await ws.send_json(payload)
+            except Exception:
+                stale.append(ws)
+        if stale:
+            async with self.lock:
+                for ws in stale:
+                    self.clients.discard(ws)
+        return detect
+
+    async def set_detect_config(self, updates: dict[str, Any]) -> dict[str, Any]:
+        now = time.time()
+        async with self.lock:
+            self.detector.update_cfg(**updates)
+            self._save_detect()
+            detect = self.detector.public(now)
+            clients = list(self.clients)
+        payload = {"k": "detect", **detect}
+        stale: list[WebSocket] = []
+        for ws in clients:
+            try:
+                await ws.send_json(payload)
+            except Exception:
+                stale.append(ws)
+        if stale:
+            async with self.lock:
+                for ws in stale:
+                    self.clients.discard(ws)
+        return detect
+
+    async def watch_detect(self) -> None:
+        while True:
+            await asyncio.sleep(0.15)
+            async with self.lock:
+                now = time.time()
+                changes = self.detector.tick(now)
+                detect = self.detector.public(now)
+                clients = list(self.clients)
+                name_for = self._name_for
+            if changes or detect.get("state") == "suspect":
+                payload = {"k": "detect", **detect}
+                stale: list[WebSocket] = []
+                for ws in clients:
+                    try:
+                        await ws.send_json(payload)
+                    except Exception:
+                        stale.append(ws)
+                if stale:
+                    async with self.lock:
+                        for ws in stale:
+                            self.clients.discard(ws)
+            if changes:
+                await _emit_detect(changes, name_for)
+
     async def add(self, ws: WebSocket) -> None:
         async with self.lock:
             self.clients.add(ws)
@@ -267,8 +410,27 @@ class Hub:
             self.clients.discard(ws)
 
 
+async def _emit_detect(changes: list[dict[str, Any]], name_for) -> None:
+    for change in changes:
+        state = change.get("state")
+        node_id = str(change.get("node_id") or "")
+        name = name_for(node_id)
+        if state == "suspect":
+            asyncio.create_task(notify.send(notify.message_suspect(name)))
+        elif state == "confirmed":
+            asyncio.create_task(notify.send(notify.message_confirmed(name)))
+
+
 class RenameBody(BaseModel):
     name: str = ""
+
+
+class DetectConfigBody(BaseModel):
+    peak_g: float | None = None
+    decay_min_ms: float | None = None
+    decay_max_ms: float | None = None
+    rise_ms: float | None = None
+    min_peak_samples: int | None = None
 
 
 hub = Hub()
@@ -308,6 +470,27 @@ async def rename_phone(node_id: str, body: RenameBody) -> JSONResponse:
     return JSONResponse(public)
 
 
+@app.post("/api/cancel")
+async def cancel_event() -> dict[str, Any]:
+    return await hub.cancel()
+
+
+@app.post("/api/detect/config")
+async def detect_config(body: DetectConfigBody) -> dict[str, Any]:
+    updates: dict[str, Any] = {}
+    if body.peak_g is not None:
+        updates["peak_g"] = min(3.0, max(0.05, float(body.peak_g)))
+    if body.decay_min_ms is not None:
+        updates["decay_min_ms"] = min(400.0, max(20.0, float(body.decay_min_ms)))
+    if body.decay_max_ms is not None:
+        updates["decay_max_ms"] = min(2000.0, max(80.0, float(body.decay_max_ms)))
+    if body.rise_ms is not None:
+        updates["rise_ms"] = min(400.0, max(20.0, float(body.rise_ms)))
+    if body.min_peak_samples is not None:
+        updates["min_peak_samples"] = min(5, max(1, int(body.min_peak_samples)))
+    return await hub.set_detect_config(updates)
+
+
 @app.websocket("/ws")
 async def ws_feed(ws: WebSocket) -> None:
     await ws.accept()
@@ -329,3 +512,4 @@ async def start_udp() -> None:
         SampleProtocol,
         local_addr=(UDP_HOST, UDP_PORT),
     )
+    loop.create_task(hub.watch_detect())

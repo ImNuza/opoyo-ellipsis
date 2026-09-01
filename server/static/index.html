@@ -36,8 +36,15 @@
       gap: var(--space-4);
       padding: 14px var(--space-8);
       background-color: var(--color-header);
-      background-image: var(--header-batik);
-      background-size: 72px 36px;
+      background-image:
+        linear-gradient(
+          180deg,
+          color-mix(in srgb, var(--color-header) 58%, transparent),
+          color-mix(in srgb, var(--color-header) 78%, transparent)
+        ),
+        var(--header-batik);
+      background-size: cover;
+      background-position: center 38%;
       color: var(--color-on-header);
       border-bottom: var(--rule) solid color-mix(in srgb, var(--color-tan) 55%, transparent);
     }
@@ -208,6 +215,78 @@
       background: var(--color-wax);
       padding: 0 4px;
     }
+    .banner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-4);
+      margin: 0 0 var(--space-5);
+      padding: 12px 16px;
+      border: var(--rule) solid var(--color-line);
+      background: var(--color-resist);
+      min-height: 56px;
+    }
+    .banner strong {
+      font-family: var(--font-display);
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+    .banner[data-state="suspect"] {
+      background: var(--color-navy);
+      color: var(--color-on-header);
+      border-color: var(--color-navy);
+    }
+    .banner[data-state="confirmed"] {
+      background: var(--color-navy);
+      color: var(--color-tan);
+      border-color: var(--color-tan);
+    }
+    .banner[data-state="recovered"],
+    .banner[data-state="cancelled"] {
+      background: var(--color-wax);
+    }
+    .banner[data-state="quiet"] #cancelBtn { display: none; }
+    .banner[data-state="recovered"] #cancelBtn,
+    .banner[data-state="cancelled"] #cancelBtn { display: none; }
+    .banner[data-state="suspect"] #cancelBtn,
+    .banner[data-state="confirmed"] #cancelBtn {
+      color: var(--color-navy);
+      background: var(--color-tan);
+      border-color: var(--color-tan);
+    }
+    .tune {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: end;
+      gap: var(--space-3);
+      margin: 0 0 var(--space-5);
+      padding: 12px 0 0;
+    }
+    .tune label {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: var(--text-xs);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+    }
+    .tune input {
+      width: 7rem;
+      min-height: 40px;
+      border: var(--rule) solid var(--color-line);
+      background: var(--color-resist);
+      color: var(--color-ink);
+      font-family: var(--font-mono);
+      font-size: var(--text-sm);
+      padding: 8px 10px;
+    }
+    .tune #tuneNote {
+      font-family: var(--font-mono);
+      font-size: var(--text-sm);
+      color: var(--color-muted);
+      max-width: 42ch;
+    }
     .back { margin-bottom: var(--space-4); }
     .detail-meta {
       display: grid;
@@ -265,6 +344,16 @@
 
     <main>
       <section id="home" class="page is-on">
+        <div class="banner" id="banner" data-state="quiet">
+          <strong id="bannerText">Quiet</strong>
+          <button type="button" id="cancelBtn">Cancel</button>
+        </div>
+        <div class="tune">
+          <label>Peak g<input id="peakG" type="number" min="0.05" max="3" step="0.05" value="0.40"></label>
+          <label>Decay min ms<input id="decayMin" type="number" min="20" max="400" step="10" value="150"></label>
+          <button type="button" id="applyTune">Apply</button>
+          <span id="tuneNote">Last hit and why it was rejected show here.</span>
+        </div>
         <h2>Combined floor</h2>
         <p class="note" id="comboNote">Max magnitude and max sound across live phones. x, y, z stay per phone.</p>
         <div class="plots">
@@ -334,20 +423,47 @@
         <p>Combined magnitude at a tick is the maximum <code>mag</code> among phones that sent a packet in the last 2.5 s. Combined sound is the maximum dB. Axes are not averaged. Each phone has its own heading.</p>
         <h2>Identity</h2>
         <p>A phone is not identified by MAC address. iOS will not give that to the app. The stable key is a UUID stored on the phone. The card also shows the model and a four-character short id. Rename on the dashboard is stored on the Mac against that UUID, so quit and rejoin keep the name.</p>
+        <h2>Live rule (Mac, not the browser)</h2>
+        <p>Detection runs in <code>server/detect.py</code> on the combined magnitude stream. The page only displays state. CS can replace <code>Detector.tick</code> later with a model that emits the same <code>FallEvent</code>.</p>
+        <p><code>FallEvent</code>: <code>id, t0, peak_g, rise_ms, decay_ms, node_id, state</code></p>
+        <p><code>state</code>: quiet → suspect → recovered | cancelled | confirmed</p>
+        <ol>
+          <li>Peak: combined mag ≥ <code>FUSION_PEAK_G</code> (default 0.4 g) for at least 2 samples.</li>
+          <li>Rise: quiet to peak ≤ <code>FUSION_RISE_MS</code> (80 ms). Slow sits fail this.</li>
+          <li>Decay: after peak, mag falls below quiet in 150–400 ms and stays there for 80 ms. Periodic hops fail the hold.</li>
+          <li>Suspect starts a 10 s demo clock (product copy is 60 s). Banner: “Suspect · 10 s to confirm”.</li>
+          <li>Extra mag ≥ 0.15 g after 500 ms → recovered. Cancel on this page → cancelled. Neither → confirmed.</li>
+        </ol>
+        <p>If a book still pages, raise <code>FUSION_PEAK_G</code> until the book is quiet and a knee-drop still fires. No acoustic veto in this slice.</p>
+        <h2>Telegram</h2>
+        <p>One-way alerts. The floor phone is the puck, not grandpa. Cancel is on this Mac.</p>
+        <ul>
+          <li>t+0 on suspect: “possible fall. Node {name}. Cancel on the Mac.”</li>
+          <li>t+10 on confirmed: “no recovery, still down.”</li>
+          <li>Recovered or cancelled: silence.</li>
+          <li>Target chat is <code>TELEGRAM_TARGET</code> in <code>.env</code> (hackathon group when set to <code>family</code>).</li>
+        </ul>
+        <h2>Phone keep-awake</h2>
+        <p>iOS will not stream CoreMotion or mic in the background. Streaming turns the idle timer off. A Keep screen awake toggle keeps it off after Stop. That is the Friday path: face-down, screen on.</p>
         <h2>Limits</h2>
         <ul>
           <li>This is a phone-on-tile proxy, not a bonded piezo.</li>
           <li>Campus Wi-Fi often blocks phone-to-laptop UDP. Personal hotspot is the trusted demo network.</li>
           <li>A sixth phone is dropped.</li>
-          <li>No labelled fall corpus in this slice, so there is no trained detector on stage.</li>
+          <li>No labelled fall corpus. The live path is a kinematic rule, not a trained classifier.</li>
+          <li>Thresholds must be calibrated on the demo tile. Defaults are a starting point.</li>
         </ul>
+        <h2>Tweak (CS)</h2>
+        <p>Env knobs, then restart uvicorn: <code>FUSION_PEAK_G</code>, <code>FUSION_QUIET_G</code>, <code>FUSION_RISE_MS</code>, <code>FUSION_DECAY_MIN_MS</code>, <code>FUSION_DECAY_MAX_MS</code>, <code>FUSION_DECAY_HOLD_MS</code>, <code>FUSION_RECOVER_G</code>, <code>FUSION_RECOVER_AFTER_MS</code>, <code>ESCALATE_S</code>.</p>
+        <p>Code: <code>server/detect.py</code> (rule), <code>server/notify.py</code> (copy + chat), <code>tests/test_detect.py</code> (knee vs book vs sit). Swap later: same <code>FallEvent</code>, disagree with the rule → no Telegram.</p>
         <h2>Not done yet</h2>
         <ul>
-          <li>Impact trigger (peak, rise, decay) that can tell a body from a book.</li>
-          <li>60 s recovery window and a Cancel control.</li>
-          <li>Telegram alert to the adult child.</li>
           <li>YAMNet or other pretrained audio veto.</li>
-          <li>1D-CNN on labelled windows. CS pair owns that later.</li>
+          <li>1D-CNN on labelled windows. Matteo / Gilchris own that.</li>
+          <li>Acoustic veto if peak_g cannot separate book and knee.</li>
+          <li>Product 60 s escalate (demo clock is 10 s).</li>
+          <li>Grandpa “I’m OK” on his own phone. Not on the puck.</li>
+          <li>True background streaming. iOS will not do that honestly.</li>
           <li>Piezo puck hardware.</li>
         </ul>
       </section>
@@ -369,12 +485,20 @@
     let dropped = 0;
     let combined = { mag: 0, db: -120, live: 0, hz: 0, packets: 0 };
     let lastRecv = 0;
+    let detect = { state: "quiet", banner: "Quiet", remaining_s: 0 };
 
     const pauseBtn = document.getElementById("pause");
     const themeBtn = document.getElementById("theme");
     const cardsEl = document.getElementById("cards");
     const footEl = document.getElementById("foot");
     const comboNote = document.getElementById("comboNote");
+    const bannerEl = document.getElementById("banner");
+    const bannerText = document.getElementById("bannerText");
+    const cancelBtn = document.getElementById("cancelBtn");
+    const peakGEl = document.getElementById("peakG");
+    const decayMinEl = document.getElementById("decayMin");
+    const applyTune = document.getElementById("applyTune");
+    const tuneNote = document.getElementById("tuneNote");
 
     function ink() {
       return getComputedStyle(document.body).getPropertyValue("--color-navy").trim() || "#1e3a5f";
@@ -424,7 +548,7 @@
       return nodes[id];
     }
 
-    function draw(canvas, values, min, max, stroke, unit) {
+    function draw(canvas, values, min, max, stroke, unit, thresh) {
       const ctx = canvas.getContext("2d");
       const w = canvas.width;
       const h = canvas.height;
@@ -458,6 +582,19 @@
       ctx.strokeStyle = stroke;
       ctx.lineWidth = 1.6;
       ctx.stroke();
+      if (typeof thresh === "number" && isFinite(thresh) && thresh > min && thresh < max) {
+        const y = PAD.t + innerH - ((thresh - min) / (max - min || 1)) * innerH;
+        ctx.beginPath();
+        ctx.setLineDash([5, 4]);
+        ctx.strokeStyle = tan();
+        ctx.lineWidth = 1;
+        ctx.moveTo(PAD.l, y);
+        ctx.lineTo(w - PAD.r, y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = muted();
+        ctx.fillText(thresh.toFixed(2), w - PAD.r - 36, y - 4);
+      }
     }
 
     function magScale(buf) {
@@ -559,11 +696,52 @@
       draw(document.getElementById("cDb"), buf.db, -80, 0, tan(), "dB");
     }
 
+    function applyDetect(d) {
+      if (!d || !d.state) return;
+      detect = d;
+      bannerEl.setAttribute("data-state", d.state);
+      bannerText.textContent = d.banner || "Quiet";
+      footEl.textContent = "Dropped extras: " + dropped + ". Rule: " + (d.state || "quiet") + ".";
+      const cfg = d.cfg || {};
+      const peakFocused = document.activeElement === peakGEl || document.activeElement === decayMinEl;
+      if (!peakFocused) {
+        if (typeof cfg.peak_g === "number") peakGEl.value = String(cfg.peak_g);
+        if (typeof cfg.decay_min_ms === "number") decayMinEl.value = String(cfg.decay_min_ms);
+      }
+      const hit = typeof d.last_hit_g === "number" ? d.last_hit_g.toFixed(3) + " g" : "-";
+      const why = d.last_reject ? " · " + d.last_reject : "";
+      tuneNote.textContent = "Last hit " + hit + why;
+    }
+
+    applyTune.addEventListener("click", async () => {
+      try {
+        const r = await fetch("/api/detect/config", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            peak_g: Number(peakGEl.value),
+            decay_min_ms: Number(decayMinEl.value)
+          })
+        });
+        const d = await r.json();
+        applyDetect(d);
+      } catch (e) {}
+    });
+
+    cancelBtn.addEventListener("click", async () => {
+      try {
+        const r = await fetch("/api/cancel", { method: "POST" });
+        const d = await r.json();
+        applyDetect(d);
+      } catch (e) {}
+    });
+
     function applyState(s) {
       if (!s) return;
       if (Array.isArray(s.slots)) slots = s.slots;
       if (s.combined) combined = s.combined;
       if (typeof s.dropped === "number") dropped = s.dropped;
+      if (s.detect) applyDetect(s.detect);
       if (s.histories) {
         Object.keys(s.histories).forEach((id) => {
           const buf = ensure(id);
@@ -584,10 +762,10 @@
         });
       }
       renderCards();
-      draw(document.getElementById("comboMag"), comboMagBuf, 0, magScale(comboMagBuf), ink(), "g");
+      draw(document.getElementById("comboMag"), comboMagBuf, 0, magScale(comboMagBuf), ink(), "g", detect.cfg && detect.cfg.peak_g);
       draw(document.getElementById("comboDb"), comboDbBuf, -80, 0, tan(), "dB");
       comboNote.textContent = (combined.live || 0) + " live · combined " + fmt(combined.mag, 3) + " g · " + fmt(combined.db, 1) + " dB · " + fmt(combined.hz, 1) + " Hz";
-      footEl.textContent = "Dropped extras: " + dropped + ". No model. Signal only.";
+      if (!s.detect) footEl.textContent = "Dropped extras: " + dropped + ". Rule: " + (detect.state || "quiet") + ".";
       const hash = location.hash || "#/";
       if (hash.startsWith("#/phone/")) renderPhone(hash.slice(8));
     }
@@ -622,9 +800,10 @@
         existing.short = p.short;
         existing.from = p.from;
       }
-      draw(document.getElementById("comboMag"), comboMagBuf, 0, magScale(comboMagBuf), ink(), "g");
+      draw(document.getElementById("comboMag"), comboMagBuf, 0, magScale(comboMagBuf), ink(), "g", detect.cfg && detect.cfg.peak_g);
       draw(document.getElementById("comboDb"), comboDbBuf, -80, 0, tan(), "dB");
       comboNote.textContent = (combined.live || 0) + " live · combined " + fmt(combined.mag, 3) + " g · " + fmt(combined.db, 1) + " dB · " + fmt(combined.hz, 1) + " Hz";
+      if (p.detect) applyDetect(p.detect);
       if ((location.hash || "#/").startsWith("#/phone/" + p.id)) renderPhone(p.id);
     }
 
@@ -636,6 +815,7 @@
         try { p = JSON.parse(ev.data); } catch (e) { return; }
         if (p && p.k === "state") applyState(p);
         else if (p && p.k === "tick") onTick(p);
+        else if (p && p.k === "detect") applyDetect(p);
         else if (p && p.slots) applyState(p);
       };
       ws.onclose = () => setTimeout(connect, 1000);

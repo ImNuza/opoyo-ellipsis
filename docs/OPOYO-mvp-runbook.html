@@ -1,0 +1,2216 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OPOYO MVP Runbook</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+  <style>
+    /* standalone equivalent of the Artifact host's wrapper */
+    :root { color-scheme: light dark; }
+    html { -webkit-text-size-adjust: 100%; }
+    body { margin: 0; }
+    img { max-width: 100%; height: auto; }
+    [hidden] { display: none !important; }
+  </style>
+  <style>
+  /* ============================================================
+     TOKENS — light is the bare :root; dark redefines tokens only
+     ============================================================ */
+  :root{
+    --paper:#f5f7f8;
+    --surface:#ffffff;
+    --surface-2:#eceff1;
+    --surface-3:#e3e8eb;
+    --line:#d6dde1;
+    --line-strong:#b9c4ca;
+
+    --ink:#12171d;
+    --ink-2:#4a5661;
+    --ink-3:#74838f;
+
+    --accent:#0d7680;
+    --accent-2:#0a5c64;
+    --accent-soft:#e0eff0;
+
+    --pass:#2c7a4b;   --pass-soft:#e4f1e9;
+    --warn:#8a6100;   --warn-soft:#f7efdc;
+    --stop:#ab3627;   --stop-soft:#f8e7e4;
+
+    --code-bg:#eef1f3;
+    --term-bg:#12171d;
+    --term-fg:#ced7dc;
+    --check:#ffffff;
+    --shadow:0 1px 2px rgba(18,23,29,.06), 0 4px 14px rgba(18,23,29,.05);
+
+    --f-display:"Archivo","Helvetica Neue",Arial,sans-serif;
+    --f-body:"IBM Plex Sans","Helvetica Neue",Arial,sans-serif;
+    --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+
+    --rail:250px;
+    --maxw:1220px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#0d1114;
+      --surface:#141a1f;
+      --surface-2:#1b2328;
+      --surface-3:#222c32;
+      --line:#28323a;
+      --line-strong:#3a4750;
+
+      --ink:#e0e7eb;
+      --ink-2:#9dabb5;
+      --ink-3:#74838f;
+
+      --accent:#4fbcc4;
+      --accent-2:#7bd3d9;
+      --accent-soft:#10292c;
+
+      --pass:#63bb87;  --pass-soft:#13251b;
+      --warn:#d3a64a;  --warn-soft:#2a2214;
+      --stop:#e07a68;  --stop-soft:#2c1a17;
+
+      --code-bg:#1a2126;
+      --term-bg:#070a0c;
+      --term-fg:#ced7dc;
+      --check:#08211f;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 4px 14px rgba(0,0,0,.3);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#0d1114;
+    --surface:#141a1f;
+    --surface-2:#1b2328;
+    --surface-3:#222c32;
+    --line:#28323a;
+    --line-strong:#3a4750;
+
+    --ink:#e0e7eb;
+    --ink-2:#9dabb5;
+    --ink-3:#74838f;
+
+    --accent:#4fbcc4;
+    --accent-2:#7bd3d9;
+    --accent-soft:#10292c;
+
+    --pass:#63bb87;  --pass-soft:#13251b;
+    --warn:#d3a64a;  --warn-soft:#2a2214;
+    --stop:#e07a68;  --stop-soft:#2c1a17;
+
+    --code-bg:#1a2126;
+    --term-bg:#070a0c;
+    --term-fg:#ced7dc;
+    --check:#08211f;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 4px 14px rgba(0,0,0,.3);
+  }
+
+  /* ============================================================
+     BASE
+     ============================================================ */
+  *{box-sizing:border-box}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:var(--f-body);
+    font-size:15px;
+    line-height:1.62;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,h4{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.2}
+  p{margin:0}
+  a{color:var(--accent);text-decoration-thickness:1px;text-underline-offset:2px}
+  a:focus-visible,button:focus-visible,input:focus-visible,summary:focus-visible{
+    outline:2px solid var(--accent);outline-offset:2px;border-radius:2px}
+  code,kbd{font-family:var(--f-mono);font-size:.88em}
+  hr{border:0;border-top:1px solid var(--line);margin:0}
+
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+
+  /* ============================================================
+     MASTHEAD
+     ============================================================ */
+  .masthead{
+    border-bottom:1px solid var(--line);
+    background:var(--surface);
+  }
+  .masthead .wrap{padding-top:38px;padding-bottom:32px}
+  .eyebrow{
+    font-family:var(--f-mono);font-size:11px;font-weight:500;
+    letter-spacing:.14em;text-transform:uppercase;color:var(--accent);
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  }
+  .eyebrow::after{content:"";flex:1;height:1px;background:var(--line);min-width:20px}
+  h1{font-size:clamp(30px,4.6vw,46px);font-weight:700;letter-spacing:-.022em;margin:14px 0 0}
+  .standfirst{
+    margin-top:14px;color:var(--ink-2);font-size:17px;max-width:63ch;
+  }
+  .standfirst strong{color:var(--ink);font-weight:600}
+
+  .clock{
+    margin-top:26px;display:grid;gap:1px;background:var(--line);
+    border:1px solid var(--line);border-radius:6px;overflow:hidden;
+    grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  }
+  .clock div{background:var(--surface);padding:12px 14px}
+  .clock dt{
+    font-family:var(--f-mono);font-size:10.5px;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--ink-3);margin-bottom:3px;
+  }
+  .clock dd{margin:0;font-weight:600;font-size:15px;font-variant-numeric:tabular-nums}
+  .clock .hot dd{color:var(--stop)}
+
+  /* ============================================================
+     SHELL / RAIL
+     ============================================================ */
+  .shell{display:grid;grid-template-columns:var(--rail) minmax(0,1fr);gap:44px;align-items:start}
+  @media (max-width:940px){
+    .shell{grid-template-columns:1fr;gap:0}
+    .rail{position:static;max-height:none;border-right:0;border-bottom:1px solid var(--line);
+          margin-bottom:28px;padding-bottom:20px}
+  }
+  .rail{
+    position:sticky;top:0;align-self:start;max-height:100vh;overflow-y:auto;
+    padding:28px 18px 40px 0;
+  }
+  .rail h2{
+    font-family:var(--f-mono);font-size:10.5px;font-weight:600;letter-spacing:.13em;
+    text-transform:uppercase;color:var(--ink-3);margin-bottom:12px;
+  }
+  .progress{margin-bottom:18px}
+  .progress .bar{height:5px;background:var(--surface-3);border-radius:3px;overflow:hidden}
+  .progress .bar span{display:block;height:100%;background:var(--accent);width:0;transition:width .25s ease}
+  .progress .num{
+    font-family:var(--f-mono);font-size:11.5px;color:var(--ink-2);margin-top:7px;
+    font-variant-numeric:tabular-nums;display:flex;justify-content:space-between;
+  }
+  .rail ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:1px}
+  .rail ol a{
+    display:flex;gap:9px;align-items:baseline;padding:5px 8px;border-radius:4px;
+    color:var(--ink-2);text-decoration:none;font-size:13.5px;line-height:1.35;
+  }
+  .rail ol a:hover{background:var(--surface-2);color:var(--ink)}
+  .rail ol a .p{
+    font-family:var(--f-mono);font-size:11px;color:var(--ink-3);flex:0 0 auto;
+    font-variant-numeric:tabular-nums;padding-top:1px;
+  }
+  .rail ol a.done{color:var(--ink-3)}
+  .rail ol a.done .t{text-decoration:line-through}
+  .rail .daymark{
+    font-family:var(--f-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--accent);padding:14px 8px 5px;border-top:1px solid var(--line);margin-top:8px;
+  }
+  .rail .daymark:first-child{border-top:0;margin-top:0;padding-top:0}
+  .themebtn{
+    margin-top:22px;font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;
+    text-transform:uppercase;background:var(--surface-2);color:var(--ink-2);
+    border:1px solid var(--line);border-radius:4px;padding:7px 11px;cursor:pointer;width:100%;
+  }
+  .themebtn:hover{border-color:var(--line-strong);color:var(--ink)}
+
+  main{padding:36px 0 90px;min-width:0}
+
+  /* ============================================================
+     SECTIONS
+     ============================================================ */
+  section{margin-bottom:52px;scroll-margin-top:20px}
+  .sechead{display:flex;gap:14px;align-items:baseline;margin-bottom:6px}
+  .sechead .idx{
+    font-family:var(--f-mono);font-size:12px;font-weight:600;color:var(--accent);
+    letter-spacing:.06em;flex:0 0 auto;padding-top:4px;
+  }
+  section h2{font-size:26px;font-weight:700;letter-spacing:-.016em}
+  .lede{color:var(--ink-2);max-width:66ch;margin:10px 0 22px;font-size:15.5px}
+  section h3{font-size:18px;font-weight:600;margin:30px 0 10px;letter-spacing:-.008em}
+  section p{max-width:66ch;margin-bottom:12px}
+  section ul,section ol{max-width:66ch;margin:0 0 14px;padding-left:20px}
+  section li{margin-bottom:6px}
+  section li::marker{color:var(--ink-3)}
+
+  /* ============================================================
+     STEP CARD
+     ============================================================ */
+  .step{
+    background:var(--surface);border:1px solid var(--line);border-radius:8px;
+    margin-bottom:18px;box-shadow:var(--shadow);overflow:hidden;
+  }
+  .step > header{
+    display:flex;gap:13px;align-items:flex-start;padding:15px 18px;
+    border-bottom:1px solid var(--line);background:var(--surface);
+  }
+  .step > header label{display:flex;align-items:center;cursor:pointer;padding-top:2px}
+  .step input[type=checkbox]{
+    appearance:none;width:17px;height:17px;border:1.5px solid var(--line-strong);
+    border-radius:4px;cursor:pointer;background:var(--surface);flex:0 0 auto;position:relative;
+  }
+  .step input[type=checkbox]:checked{background:var(--accent);border-color:var(--accent)}
+  .step input[type=checkbox]:checked::after{
+    content:"";position:absolute;left:5px;top:1.5px;width:5px;height:10px;
+    border:solid var(--check);border-width:0 2px 2px 0;transform:rotate(42deg);
+  }
+  .step .hgroup{flex:1;min-width:0}
+  .step .sid{
+    font-family:var(--f-mono);font-size:11px;font-weight:600;color:var(--accent);
+    letter-spacing:.07em;display:block;margin-bottom:2px;
+  }
+  .step h4{font-size:16.5px;font-weight:600;letter-spacing:-.008em}
+  .step .tbox{
+    font-family:var(--f-mono);font-size:11px;color:var(--ink-3);white-space:nowrap;
+    border:1px solid var(--line);border-radius:99px;padding:2px 9px;flex:0 0 auto;margin-top:2px;
+  }
+  .step .body{padding:16px 18px 18px}
+  .step.done{opacity:.62}
+  .step.done > header h4{text-decoration:line-through;text-decoration-color:var(--ink-3)}
+
+  /* labelled blocks inside a step */
+  .blk{margin-top:14px}
+  .blk:first-child{margin-top:0}
+  .blk > .lbl{
+    font-family:var(--f-mono);font-size:10px;font-weight:600;letter-spacing:.14em;
+    text-transform:uppercase;margin-bottom:6px;display:flex;align-items:center;gap:8px;
+  }
+  .blk > .lbl::after{content:"";flex:1;height:1px;background:var(--line)}
+  .blk.goal > .lbl{color:var(--ink-3)}
+  .blk.do   > .lbl{color:var(--ink-3)}
+  .blk.verify > .lbl{color:var(--pass)}
+  .blk.fail > .lbl{color:var(--stop)}
+  .blk p,.blk ul,.blk ol{max-width:none}
+  .blk > p:last-child,.blk > ul:last-child,.blk > ol:last-child{margin-bottom:0}
+
+  .verify-box{
+    background:var(--pass-soft);border:1px solid var(--pass);border-left-width:3px;
+    border-radius:5px;padding:12px 14px;
+  }
+  .verify-box .crit{
+    display:flex;gap:9px;align-items:flex-start;margin-bottom:7px;font-size:14px;
+  }
+  .verify-box .crit:last-child{margin-bottom:0}
+  .verify-box .crit .tick{
+    font-family:var(--f-mono);color:var(--pass);font-weight:600;flex:0 0 auto;font-size:12px;padding-top:2px;
+  }
+  .fail-box{
+    background:var(--stop-soft);border:1px solid var(--stop);border-left-width:3px;
+    border-radius:5px;padding:12px 14px;font-size:14px;
+  }
+  .fail-box dl{margin:0;display:grid;gap:9px}
+  .fail-box dt{font-weight:600;color:var(--stop);font-size:13.5px}
+  .fail-box dd{margin:2px 0 0;color:var(--ink-2)}
+
+  /* ============================================================
+     CODE
+     ============================================================ */
+  pre{
+    background:var(--code-bg);border:1px solid var(--line);border-radius:6px;
+    padding:12px 14px;overflow-x:auto;margin:0 0 12px;font-size:12.8px;line-height:1.6;
+  }
+  pre:last-child{margin-bottom:0}
+  pre code{font-family:var(--f-mono);color:var(--ink)}
+  pre.term{background:var(--term-bg);border-color:var(--term-bg)}
+  pre.term code{color:var(--term-fg)}
+  pre.term .c{color:#6f8892}
+  pre.term .g{color:#7fcf9e}
+  pre.term .y{color:#dcb463}
+  .filename{
+    font-family:var(--f-mono);font-size:11px;color:var(--ink-3);letter-spacing:.03em;
+    background:var(--surface-2);border:1px solid var(--line);border-bottom:0;
+    padding:5px 11px;border-radius:6px 6px 0 0;display:inline-block;margin-bottom:-1px;
+  }
+  .filename + pre{border-radius:0 6px 6px 6px}
+  code.inl{background:var(--surface-2);border:1px solid var(--line);border-radius:3px;padding:.5px 5px}
+
+  /* ============================================================
+     CALLOUTS / TABLES / MISC
+     ============================================================ */
+  .note{
+    border-left:3px solid var(--accent);background:var(--accent-soft);
+    padding:12px 15px;border-radius:0 5px 5px 0;margin:0 0 16px;font-size:14.5px;max-width:70ch;
+  }
+  .note.warn{border-left-color:var(--warn);background:var(--warn-soft)}
+  .note.stop{border-left-color:var(--stop);background:var(--stop-soft)}
+  .note .t{
+    font-family:var(--f-mono);font-size:10px;font-weight:600;letter-spacing:.13em;
+    text-transform:uppercase;display:block;margin-bottom:4px;color:var(--accent);
+  }
+  .note.warn .t{color:var(--warn)}
+  .note.stop .t{color:var(--stop)}
+  .note p{margin-bottom:8px}
+  .note p:last-child{margin-bottom:0}
+
+  .tablewrap{overflow-x:auto;margin-bottom:16px;border:1px solid var(--line);border-radius:6px}
+  table{border-collapse:collapse;width:100%;font-size:13.8px;background:var(--surface)}
+  th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{
+    font-family:var(--f-mono);font-size:10.5px;font-weight:600;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--ink-3);background:var(--surface-2);white-space:nowrap;
+  }
+  tr:last-child td{border-bottom:0}
+  td code{background:var(--surface-2);border-radius:3px;padding:.5px 4px}
+  .num{font-variant-numeric:tabular-nums}
+
+  .pill{
+    display:inline-block;font-family:var(--f-mono);font-size:10.5px;font-weight:600;
+    letter-spacing:.07em;text-transform:uppercase;padding:2px 8px;border-radius:99px;border:1px solid;
+  }
+  .pill.must{color:var(--stop);border-color:var(--stop);background:var(--stop-soft)}
+  .pill.should{color:var(--warn);border-color:var(--warn);background:var(--warn-soft)}
+  .pill.could{color:var(--ink-3);border-color:var(--line-strong);background:var(--surface-2)}
+  .pill.out{color:var(--ink-3);border-color:var(--line-strong);background:transparent}
+
+  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:16px}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:7px;padding:15px 17px}
+  .card h4{font-size:15px;font-weight:600;margin-bottom:7px}
+  .card p{font-size:14px;color:var(--ink-2);margin-bottom:0;max-width:none}
+
+  details{
+    background:var(--surface);border:1px solid var(--line);border-radius:6px;
+    padding:11px 15px;margin-bottom:10px;
+  }
+  details summary{
+    cursor:pointer;font-weight:600;font-size:14.5px;list-style:none;
+    display:flex;align-items:center;gap:9px;
+  }
+  details summary::-webkit-details-marker{display:none}
+  details summary::before{
+    content:"+";font-family:var(--f-mono);color:var(--accent);font-weight:600;flex:0 0 auto;
+  }
+  details[open] summary::before{content:"–"}
+  details[open] summary{margin-bottom:11px}
+
+  .flow{
+    display:flex;flex-wrap:wrap;align-items:stretch;gap:0;margin-bottom:18px;
+    border:1px solid var(--line);border-radius:7px;overflow:hidden;background:var(--surface);
+  }
+  .flow .n{
+    flex:1 1 130px;min-width:130px;padding:13px 14px;border-right:1px solid var(--line);
+  }
+  .flow .n:last-child{border-right:0}
+  .flow .n .k{
+    font-family:var(--f-mono);font-size:10px;letter-spacing:.11em;text-transform:uppercase;
+    color:var(--accent);margin-bottom:4px;
+  }
+  .flow .n .v{font-size:13.5px;font-weight:600;line-height:1.35}
+  .flow .n .s{font-size:12.5px;color:var(--ink-3);margin-top:3px;line-height:1.4}
+
+  footer{border-top:1px solid var(--line);background:var(--surface);padding:26px 0 40px}
+  footer .wrap{color:var(--ink-3);font-size:13.5px}
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:.01ms !important;transition-duration:.01ms !important}
+  }
+  </style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow"><span>Ellipsis Tech Series 2026 · Top 10</span></div>
+    <h1>OPOYO MVP Runbook</h1>
+    <p class="standfirst">
+      A three-day build plan for the passive fall-detection MVP. Every step has an
+      acceptance test you run yourself. <strong>If a step's VERIFY block does not pass,
+      do not move on</strong> — the next step assumes it did.
+    </p>
+    <dl class="clock">
+      <div><dt>Today</dt><dd>Mon 31 Aug</dd></div>
+      <div><dt>Build days</dt><dd>Mon · Tue · Wed</dd></div>
+      <div class="hot"><dt>Pitch deck due</dt><dd>Thu 3 Sep, 6pm</dd></div>
+      <div class="hot"><dt>Repo due</dt><dd>Thu 3 Sep, 9pm</dd></div>
+      <div><dt>Pitch day</dt><dd>Fri 4 Sep, 3.30pm</dd></div>
+      <div><dt>Stage time</dt><dd>10 min + 5 Q&amp;A</dd></div>
+    </dl>
+  </div>
+</header>
+
+<div class="wrap">
+<div class="shell">
+
+  <nav class="rail" aria-label="Contents">
+    <h2>Progress</h2>
+    <div class="progress">
+      <div class="bar"><span id="pbar"></span></div>
+      <div class="num"><span id="pcount">0 / 0</span><span id="ppct">0%</span></div>
+    </div>
+    <ol id="toc">
+      <li class="daymark">Read first</li>
+      <li><a href="#brief"><span class="p">00</span><span class="t">The brief</span></a></li>
+      <li><a href="#protocol"><span class="p">01</span><span class="t">How to use this</span></a></li>
+      <li><a href="#scope"><span class="p">02</span><span class="t">Scope guard</span></a></li>
+      <li><a href="#contracts"><span class="p">03</span><span class="t">Contracts</span></a></li>
+      <li class="daymark">Monday</li>
+      <li><a href="#p0"><span class="p">P0</span><span class="t">Environment &amp; skeleton</span></a></li>
+      <li><a href="#p1"><span class="p">P1</span><span class="t">Sensor bridge</span></a></li>
+      <li><a href="#p2"><span class="p">P2</span><span class="t">Trigger stage</span></a></li>
+      <li class="daymark">Tuesday</li>
+      <li><a href="#p3"><span class="p">P3</span><span class="t">Features &amp; classifier</span></a></li>
+      <li><a href="#p4"><span class="p">P4</span><span class="t">Acoustic veto</span></a></li>
+      <li><a href="#p5"><span class="p">P5</span><span class="t">Event state machine</span></a></li>
+      <li><a href="#p6"><span class="p">P6</span><span class="t">Escalation</span></a></li>
+      <li class="daymark">Wednesday</li>
+      <li><a href="#p7"><span class="p">P7</span><span class="t">Dashboard</span></a></li>
+      <li><a href="#p8"><span class="p">P8</span><span class="t">Tuning &amp; adversarial</span></a></li>
+      <li><a href="#p9"><span class="p">P9</span><span class="t">Repo &amp; README</span></a></li>
+      <li><a href="#p10"><span class="p">P10</span><span class="t">Demo rehearsal</span></a></li>
+      <li class="daymark">Reference</li>
+      <li><a href="#risks"><span class="p">A1</span><span class="t">Risk register</span></a></li>
+      <li><a href="#trouble"><span class="p">A2</span><span class="t">Troubleshooting</span></a></li>
+    </ol>
+    <button class="themebtn" id="themebtn" type="button">Toggle theme</button>
+  </nav>
+
+  <main>
+
+  <!-- ================= 00 BRIEF ================= -->
+  <section id="brief">
+    <div class="sechead"><span class="idx">00</span><h2>The brief</h2></div>
+    <p class="lede">
+      Build a system that detects a hard fall from floor vibration, confirms the person did not
+      get up, and escalates to a human — with no camera and nothing worn.
+    </p>
+
+    <div class="flow">
+      <div class="n"><div class="k">Stage 1</div><div class="v">Sense</div><div class="s">Phone accelerometer on the floor + laptop microphone</div></div>
+      <div class="n"><div class="k">Stage 2</div><div class="v">Trigger</div><div class="s">Cheap always-on energy gate</div></div>
+      <div class="n"><div class="k">Stage 3</div><div class="v">Classify</div><div class="s">Features → fall score</div></div>
+      <div class="n"><div class="k">Stage 4</div><div class="v">Veto</div><div class="s">YAMNet hears TV/speech → suppress</div></div>
+      <div class="n"><div class="k">Stage 5</div><div class="v">Confirm</div><div class="s">Watch for recovery movement</div></div>
+      <div class="n"><div class="k">Stage 6</div><div class="v">Escalate</div><div class="s">Telegram + call, then rung 2</div></div>
+    </div>
+
+    <div class="note">
+      <span class="t">Where the phone fits</span>
+      <p>The phone is a <strong>sensor bridge, not the product</strong>. In the real unit a piezo
+      disc is bonded to the slab. The phone lets us build and test the whole pipeline this week
+      without hardware. Say this out loud in the pitch — do not let a judge discover it.</p>
+    </div>
+
+    <div class="note warn">
+      <span class="t">Two deadlines on Thursday, not one</span>
+      <p>Read from the invitation email itself, so these are the organiser's words and not an
+      inference:</p>
+      <ul>
+        <li><strong>6pm Thu 3 Sep</strong> — pitch deck, emailed in, <em>if</em> you want slides shown on the day. Optional, but the earlier of the two.</li>
+        <li><strong>9pm Thu 3 Sep</strong> — solution submitted and <code class="inl">README.md</code> live on the GitHub repo. This one is mandatory.</li>
+        <li><strong>Fri 4 Sep, 3.30pm</strong> — Hackathon Final Pitch Day, SOE Seminar Room B1-1. Registration opens 3pm; the event runs to 7.15pm. Smart casual.</li>
+      </ul>
+      <p>Pitches run in two halves (3.30–4.45pm and 5.00–6.15pm), so you may be on either side of
+      the break — be demo-ready from 3.30pm.</p>
+    </div>
+  </section>
+
+  <!-- ================= 01 PROTOCOL ================= -->
+  <section id="protocol">
+    <div class="sechead"><span class="idx">01</span><h2>How to use this</h2></div>
+    <p class="lede">
+      This document is written so you can work without asking anyone. That only holds if you
+      follow the protocol exactly.
+    </p>
+
+    <h3>Every step has four blocks</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Block</th><th>What it means</th></tr></thead>
+        <tbody>
+          <tr><td><strong>GOAL</strong></td><td>One sentence. If you can't say what you're building, re-read before typing.</td></tr>
+          <tr><td><strong>DO</strong></td><td>The commands and code. Type them; don't improvise around them.</td></tr>
+          <tr><td><strong>VERIFY</strong></td><td>An exact command and the exact result that counts as passing. This is the gate.</td></tr>
+          <tr><td><strong>IF IT FAILS</strong></td><td>The two or three things that actually go wrong here, and what to do.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>The 20-minute rule</h3>
+    <div class="note stop">
+      <span class="t">Stop condition</span>
+      <p>If a VERIFY block has failed <strong>twice</strong> and <strong>20 minutes</strong> have
+      passed, stop working on it. Post to the team chat, in this order:</p>
+      <p>1. The step ID (e.g. <code class="inl">P2.3</code>) &nbsp; 2. The exact command you ran &nbsp;
+      3. The <em>full</em> output, not a summary &nbsp; 4. What you already tried.</p>
+      <p>Then start the next step that does not depend on this one. Do not sit blocked, and do not
+      silently redesign around the problem — a changed contract breaks someone else's work.</p>
+    </div>
+
+    <h3>Tick the boxes</h3>
+    <p>
+      Each step has a checkbox. Tick it only when VERIFY passes. Progress saves in this browser,
+      so the rail on the left is the honest status of the build. If someone asks "where are we",
+      the answer is the percentage in the rail.
+    </p>
+  </section>
+
+  <!-- ================= 02 SCOPE ================= -->
+  <section id="scope">
+    <div class="sechead"><span class="idx">02</span><h2>Scope guard</h2></div>
+    <p class="lede">
+      Three days. The single biggest risk to this build is doing something that isn't on this list.
+    </p>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Priority</th><th>Item</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td><span class="pill must">Must</span></td><td>Live vibration capture → trigger → fall score → alert on a real phone drop</td><td>This is the demo. Without it there is nothing to show.</td></tr>
+          <tr><td><span class="pill must">Must</span></td><td>Telegram alert with room, time, confidence</td><td>Free, reliable, visible on stage in two seconds.</td></tr>
+          <tr><td><span class="pill must">Must</span></td><td>Recovery-confirmation window</td><td>It is the clinical claim in the proposal. A detector without it is just an impact sensor.</td></tr>
+          <tr><td><span class="pill must">Must</span></td><td>README with setup and run steps</td><td>Explicitly graded by the organisers.</td></tr>
+          <tr><td><span class="pill should">Should</span></td><td>YAMNet acoustic veto</td><td>The differentiator. Pretrained, so no data cost.</td></tr>
+          <tr><td><span class="pill should">Should</span></td><td>Live dashboard with waveform + event log</td><td>Makes the demo legible from the back of a room.</td></tr>
+          <tr><td><span class="pill should">Should</span></td><td>Adversarial negative set + confusion matrix</td><td>Turns "it works" into a number a judge can challenge.</td></tr>
+          <tr><td><span class="pill could">Could</span></td><td>Twilio voice call to the senior</td><td>Needs a funded account and a verified number. Mock it if blocked.</td></tr>
+          <tr><td><span class="pill could">Could</span></td><td>1D-CNN replacing the feature classifier</td><td>Only if P8 finishes early. The interface already allows the swap.</td></tr>
+          <tr><td><span class="pill out">Out</span></td><td>Gait trending, Wi-Fi CSI, piezo hardware, mobile app, user accounts, cloud deploy, Docker</td><td>All are roadmap. None are demoable by Wednesday.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note stop">
+      <span class="t">Do not</span>
+      <p>Do not train a neural network before P8 is green. Do not refactor the module layout. Do not
+      swap the web framework, the audio library, or the config format. Do not add a database.
+      Do not spend time on CSS beyond what P7 specifies.</p>
+    </div>
+  </section>
+
+  <!-- ================= 03 CONTRACTS ================= -->
+  <section id="contracts">
+    <div class="sechead"><span class="idx">03</span><h2>Contracts</h2></div>
+    <p class="lede">
+      These four things are frozen. Everything else is yours to shape. If you think one of these
+      is wrong, say so in chat before changing it — two people are building against them.
+    </p>
+
+    <h3>Repository layout</h3>
+    <div class="filename">tree</div>
+<pre><code>opoyo/
+├── README.md                 # graded deliverable — see P9
+├── requirements.txt
+├── config.yaml               # every threshold lives here, none in code
+├── .env.example              # secret names only, never values
+├── opoyo/
+│   ├── __init__.py
+│   ├── config.py             # loads config.yaml + .env
+│   ├── schemas.py            # FallEvent — the frozen contract
+│   ├── ring.py               # RingBuffer
+│   ├── dsp.py                # filters, rolling RMS, trigger
+│   ├── features.py           # window -> feature dict
+│   ├── classify.py           # RuleClassifier / ModelClassifier
+│   ├── veto.py               # YAMNet acoustic check
+│   ├── machine.py            # event state machine
+│   ├── notify.py             # Telegram + Twilio
+│   └── server.py             # FastAPI: phone ingest, dashboard, websocket
+├── dashboard/index.html
+├── scripts/
+│   ├── record.py             # capture labelled windows to data/
+│   ├── replay.py             # replay a CSV through the pipeline
+│   └── train.py              # fit the classifier from data/
+├── data/                     # recorded windows (git-ignored except samples/)
+└── tests/
+    ├── fixtures/
+    ├── test_dsp.py
+    ├── test_features.py
+    └── test_machine.py</code></pre>
+
+    <h3>The event object</h3>
+    <p>Everything downstream of classification consumes this and nothing else. Raw audio and raw
+    acceleration never cross this boundary — that is the privacy claim, in code.</p>
+    <div class="filename">opoyo/schemas.py</div>
+<pre><code>from dataclasses import dataclass, asdict
+from typing import Optional
+import json, time, uuid
+
+STATES = ("candidate", "vetoed", "recovered", "alert", "cancelled")
+
+@dataclass
+class FallEvent:
+    event_id: str
+    ts_unix: float
+    room: str
+    state: str              # one of STATES
+    fall_score: float       # 0..1 from the classifier
+    veto_label: Optional[str]   # e.g. "Television" or None
+    veto_score: float           # 0..1
+    peak_mag: float             # m/s^2 above gravity
+    decay_ms: float             # peak -> 10% of peak
+
+    @staticmethod
+    def new(room: str, **kw) -> "FallEvent":
+        return FallEvent(
+            event_id=uuid.uuid4().hex[:12],
+            ts_unix=time.time(),
+            room=room,
+            state=kw.pop("state", "candidate"),
+            fall_score=kw.pop("fall_score", 0.0),
+            veto_label=kw.pop("veto_label", None),
+            veto_score=kw.pop("veto_score", 0.0),
+            peak_mag=kw.pop("peak_mag", 0.0),
+            decay_ms=kw.pop("decay_ms", 0.0),
+        )
+
+    def to_json(self) -> str:
+        return json.dumps(asdict(self), separators=(",", ":"))</code></pre>
+
+    <h3>The classifier interface</h3>
+    <p>Two implementations, one signature. This is what lets us ship the rule version on Monday and
+    drop in a trained model on Wednesday without touching the pipeline.</p>
+    <div class="filename">opoyo/classify.py — interface only</div>
+<pre><code>class Classifier(Protocol):
+    def score(self, feats: dict[str, float]) -> float:
+        """Return P(fall) in [0, 1]. Must never raise."""</code></pre>
+
+    <h3>Config keys</h3>
+    <p>No magic numbers in code. If you need a new constant, add it here and read it from
+    <code class="inl">config.py</code>.</p>
+    <div class="filename">config.yaml</div>
+<pre><code>room: "Living room"
+
+sensor:
+  accel_rate_hz: 100        # phone push rate
+  mic_rate_hz: 16000        # YAMNet requires 16 kHz mono
+  buffer_seconds: 30
+
+trigger:
+  highpass_hz: 2.0          # kill gravity drift
+  rms_window_ms: 100
+  baseline_seconds: 10.0
+  k_mad: 6.0                # fire at median + k * MAD
+  refractory_s: 2.0
+  min_peak_mag: 3.0         # m/s^2, absolute floor
+
+window:
+  pre_s: 0.5
+  post_s: 1.5
+
+classify:
+  model_path: "models/clf.joblib"
+  fall_threshold: 0.60
+
+veto:
+  enabled: true
+  classes: ["Speech", "Television", "Music", "Radio", "Conversation"]
+  threshold: 0.30
+
+confirm:
+  window_s: 15              # DEMO value. Production is 60.
+  recovery_k: 3.0           # recovery if RMS exceeds baseline * k
+
+escalate:
+  dry_run: true             # flip to false only in P6.4
+  rung2_delay_s: 60</code></pre>
+  </section>
+
+  <!-- ================= P0 ================= -->
+  <section id="p0">
+    <div class="sechead"><span class="idx">P0</span><h2>Environment &amp; skeleton</h2></div>
+    <p class="lede">Monday morning. Nothing here is interesting; all of it is load-bearing.</p>
+
+    <div class="step" data-step="P0.1">
+      <header>
+        <label><input type="checkbox"></label>
+        <div class="hgroup"><span class="sid">P0.1</span><h4>Python 3.11 and a virtual environment</h4></div>
+        <span class="tbox">15 min</span>
+      </header>
+      <div class="body">
+        <div class="blk goal"><div class="lbl">Goal</div>
+          <p>A clean, pinned interpreter that TensorFlow will actually install into.</p></div>
+        <div class="blk do"><div class="lbl">Do</div>
+          <div class="note warn"><span class="t">Version matters</span>
+            <p>Use <strong>Python 3.11</strong>. TensorFlow wheels lag the newest Python by months,
+            and a 3.13 environment will fail at P4 with no obvious cause. On Apple Silicon this is
+            the difference between a ten-minute install and a lost afternoon.</p></div>
+<pre class="term"><code><span class="c"># macOS</span>
+brew install python@3.11
+cd ~/dev &amp;&amp; mkdir opoyo &amp;&amp; cd opoyo
+python3.11 -m venv .venv
+source .venv/bin/activate
+python -V</code></pre>
+        </div>
+        <div class="blk verify"><div class="lbl">Verify</div>
+          <div class="verify-box">
+            <div class="crit"><span class="tick">01</span><span><code class="inl">python -V</code> prints <code class="inl">Python 3.11.x</code></span></div>
+            <div class="crit"><span class="tick">02</span><span><code class="inl">which python</code> ends in <code class="inl">opoyo/.venv/bin/python</code></span></div>
+          </div>
+        </div>
+        <div class="blk fail"><div class="lbl">If it fails</div>
+          <div class="fail-box"><dl>
+            <dt><code>which python</code> points outside .venv</dt>
+            <dd>The venv isn't active. Re-run <code>source .venv/bin/activate</code>. You must do this in <em>every new terminal tab</em> — this causes more confusion than any other single thing.</dd>
+            <dt>brew installs but python3.11 not found</dt>
+            <dd>Use the full path: <code>$(brew --prefix)/opt/python@3.11/bin/python3.11 -m venv .venv</code></dd>
+          </dl></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step" data-step="P0.2">
+      <header>
+        <label><input type="checkbox"></label>
+        <div class="hgroup"><span class="sid">P0.2</span><h4>Pin the dependencies</h4></div>
+        <span class="tbox">15 min</span>
+      </header>
+      <div class="body">
+        <div class="blk goal"><div class="lbl">Goal</div>
+          <p>Everything the project needs, at versions that are known to sit together.</p></div>
+        <div class="blk do"><div class="lbl">Do</div>
+          <div class="filename">requirements.txt</div>
+<pre><code>numpy==1.26.4
+scipy==1.13.1
+sounddevice==0.4.7
+soundfile==0.12.1
+fastapi==0.111.0
+uvicorn[standard]==0.30.1
+pydantic==2.7.4
+python-dotenv==1.0.1
+pyyaml==6.0.1
+requests==2.32.3
+scikit-learn==1.5.0
+joblib==1.4.2
+tensorflow==2.16.2
+tensorflow-hub==0.16.1
+twilio==9.2.3
+pytest==8.2.2</code></pre>
+<pre class="term"><code>pip install --upgrade pip
+pip install -r requirements.txt
+<span class="c"># macOS only — the PortAudio C library that sounddevice binds to</span>
+brew install portaudio</code></pre>
+        </div>
+        <div class="blk verify"><div class="lbl">Verify</div>
+          <div class="verify-box">
+            <div class="crit"><span class="tick">01</span><span><code class="inl">python -c "import numpy, scipy, sounddevice, fastapi, sklearn, tensorflow; print('ok')"</code> prints <code class="inl">ok</code></span></div>
+            <div class="crit"><span class="tick">02</span><span><code class="inl">python -c "import sounddevice; print(sounddevice.query_devices())"</code> lists at least one input device</span></div>
+          </div>
+        </div>
+        <div class="blk fail"><div class="lbl">If it fails</div>
+          <div class="fail-box"><dl>
+            <dt>tensorflow has no matching distribution</dt>
+            <dd>You're not on Python 3.11, or you're on Apple Silicon. On M-series Macs swap the two TF lines for <code>tensorflow-macos==2.16.2</code> and <code>tensorflow-metal==1.1.0</code>, keep <code>tensorflow-hub</code>, and re-run.</dd>
+            <dt>sounddevice imports but query_devices() is empty</dt>
+            <dd>PortAudio is missing or macOS hasn't granted mic access. Install PortAudio, then run any capture once and approve the system prompt: System Settings → Privacy &amp; Security → Microphone → your terminal app.</dd>
+          </dl></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step" data-step="P0.3">
+      <header>
+        <label><input type="checkbox"></label>
+        <div class="hgroup"><span class="sid">P0.3</span><h4>Repo, git, and the empty skeleton</h4></div>
+        <span class="tbox">20 min</span>
+      </header>
+      <div class="body">
+        <div class="blk goal"><div class="lbl">Goal</div>
+          <p>The exact directory tree from Contracts, committed, with secrets already excluded.</p></div>
+        <div class="blk do"><div class="lbl">Do</div>
+<pre class="term"><code>git init
+mkdir -p opoyo scripts tests/fixtures dashboard data models
+touch opoyo/__init__.py
+
+printf '.venv/\n__pycache__/\n*.pyc\n.env\ndata/*\n!data/samples/\nmodels/*.joblib\n.DS_Store\n' &gt; .gitignore
+printf 'TELEGRAM_BOT_TOKEN=\nTELEGRAM_CHAT_ID=\nTWILIO_ACCOUNT_SID=\nTWILIO_AUTH_TOKEN=\nTWILIO_FROM=\nTWILIO_TO=\n' &gt; .env.example
+cp .env.example .env
+
+git add -A &amp;&amp; git commit -m "P0: project skeleton"</code></pre>
+          <div class="note stop"><span class="t">Never commit</span>
+            <p><code class="inl">.env</code> holds live credentials. If <code class="inl">git status</code>
+            ever lists it, stop and fix <code class="inl">.gitignore</code> before committing. A leaked
+            Telegram token gets the bot hijacked within hours.</p></div>
+        </div>
+        <div class="blk verify"><div class="lbl">Verify</div>
+          <div class="verify-box">
+            <div class="crit"><span class="tick">01</span><span><code class="inl">git status --porcelain</code> prints nothing (clean tree)</span></div>
+            <div class="crit"><span class="tick">02</span><span><code class="inl">git check-ignore -v .env</code> names <code class="inl">.gitignore</code> as the reason</span></div>
+            <div class="crit"><span class="tick">03</span><span>Directory tree matches Contracts exactly — no extra top-level folders</span></div>
+          </div>
+        </div>
+        <div class="blk fail"><div class="lbl">If it fails</div>
+          <div class="fail-box"><dl>
+            <dt>git check-ignore prints nothing</dt>
+            <dd>.env is already tracked. Run <code>git rm --cached .env</code>, commit, then re-check.</dd>
+          </dl></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step" data-step="P0.4">
+      <header>
+        <label><input type="checkbox"></label>
+        <div class="hgroup"><span class="sid">P0.4</span><h4>Config loader</h4></div>
+        <span class="tbox">20 min</span>
+      </header>
+      <div class="body">
+        <div class="blk goal"><div class="lbl">Goal</div>
+          <p>One import that gives any module its settings, so no threshold is ever hard-coded.</p></div>
+        <div class="blk do"><div class="lbl">Do</div>
+          <p>Paste the <code class="inl">config.yaml</code> from Contracts into the repo root, then:</p>
+          <div class="filename">opoyo/config.py</div>
+<pre><code>from pathlib import Path
+import os, yaml
+from dotenv import load_dotenv
+
+ROOT = Path(__file__).resolve().parent.parent
+load_dotenv(ROOT / ".env")
+
+class _Cfg(dict):
+    """dict with attribute access, nested."""
+    def __getattr__(self, k):
+        try:
+            v = self[k]
+        except KeyError:
+            raise AttributeError(k) from None
+        return _Cfg(v) if isinstance(v, dict) else v
+
+def load(path: Path | None = None) -> _Cfg:
+    with open(path or ROOT / "config.yaml") as f:
+        return _Cfg(yaml.safe_load(f))
+
+CFG = load()
+
+def secret(name: str, default: str = "") -> str:
+    return os.getenv(name, default)</code></pre>
+        </div>
+        <div class="blk verify"><div class="lbl">Verify</div>
+          <div class="verify-box">
+            <div class="crit"><span class="tick">01</span><span><code class="inl">python -c "from opoyo.config import CFG; print(CFG.trigger.k_mad, CFG.confirm.window_s)"</code> prints <code class="inl">6.0 15</code></span></div>
+            <div class="crit"><span class="tick">02</span><span><code class="inl">python -c "from opoyo.config import secret; print(repr(secret('NOPE')))"</code> prints <code class="inl">''</code> — missing secrets never crash</span></div>
+          </div>
+        </div>
+        <div class="blk fail"><div class="lbl">If it fails</div>
+          <div class="fail-box"><dl>
+            <dt>ModuleNotFoundError: No module named 'opoyo'</dt>
+            <dd>You're not in the repo root. All commands in this runbook are run from the directory that contains <code>config.yaml</code>.</dd>
+          </dl></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= P1 ================= -->
+  <section id="p1">
+    <div class="sechead"><span class="idx">P1</span><h2>Sensor bridge</h2></div>
+    <p class="lede">
+      Get real acceleration off a phone lying on the floor and into Python. Everything downstream
+      is worthless until this is solid, so it comes first.
+    </p>
+
+    <div class="step" data-step="P1.1">
+      <header>
+        <label><input type="checkbox"></label>
+        <div class="hgroup"><span class="sid">P1.1</span><h4>Install Sensor Logger and point it at the laptop</h4></div>
+        <span class="tbox">25 min</span>
+      </header>
+      <div class="body">
+        <div class="blk goal"><div class="lbl">Goal</div>
+          <p>The phone pushes accelerometer JSON to the laptop over the LAN at roughly 100 Hz.</p></div>
+        <div class="blk do"><div class="lbl">Do</div>
+          <p>Install <strong>Sensor Logger</strong> (free, iOS and Android). We use it instead of a
+          browser page because the browser motion API needs HTTPS, and a self-signed certificate on
+          a hackathon LAN is an afternoon you don't have.</p>
+          <ol>
+            <li>Laptop and phone on the <strong>same Wi-Fi</strong>. Not the venue guest network if it isolates clients — use a personal hotspot from a third phone if needed.</li>
+            <li>Find the laptop's LAN IP: <code class="inl">ipconfig getifaddr en0</code> (macOS). Write it down.</li>
+            <li>In Sensor Logger: enable <strong>Accelerometer</strong> only, set rate to <strong>100 Hz</strong>, turn everything else off.</li>
+            <li>Settings → Data Streaming → <strong>HTTP Push</strong> → URL <code class="inl">http://&lt;laptop-ip&gt;:8000/ingest/accel</code></li>
+          </ol>
+          <p>Now a throwaway receiver so you can see packets before writing the real server:</p>
+          <div class="filename">scripts/sniff.py</div>
+<pre><code>from fastapi import FastAPI, Request
+import uvicorn, time
+
+app = FastAPI()
+n, t0 = 0, time.time()
+
+@app.post("/ingest/accel")
+async def ingest(req: Request):
+    global n
+    body = await req.json()
+    items = [p for p in body.get("payload", []) if "accelerometer" in p.get("name", "")]
+    n += len(items)
+    if items:
+        v = items[-1]["values"]
+        print(f"{n:6d} samples  {n/(time.time()-t0):6.1f} Hz  "
+              f"x={v['x']:+.2f} y={v['y']:+.2f} z={v['z']:+.2f}")
+    return {"ok": True}
+
+uvicorn.run(app, host="0.0.0.0", port=8000)</code></pre>
+<pre class="term"><code>python scripts/sniff.py</code></pre>
+        </div>
+        <div class="blk verify"><div class="lbl">Verify</div>
+          <div class="verify-box">
+            <div class="crit"><span class="tick">01</span><span>Lines print continuously while the phone is streaming</span></div>
+            <div class="crit"><span class="tick">02</span><span>Rate settles between <strong>60 and 130 Hz</strong> after ten seconds</span></div>
+            <div class="crit"><span class="tick">03</span><span>Phone flat on the floor, screen up: one axis reads about <strong>&plusmn;9.8</strong>, the other two near 0</span></div>
+            <div class="crit"><span class="tick">04</span><span>Tapping the floor a metre away visibly disturbs the numbers</span></div>
+          </div>
+        </div>
+        <div class="blk fail"><div class="lbl">If it fails</div>
+          <div class="fail-box"><dl>
+            <dt>No lines at all</dt>
+            <dd>Firewall or wrong IP. Test from the phone's browser: open <code>http://&lt;laptop-ip&gt;:8000/docs</code>. If that doesn't load, the network is blocking you — switch both devices to a phone hotspot. macOS may also prompt to allow incoming connections; approve it.</dd>
+            <dt>Rate is 5–20 Hz</dt>
+            <dd>Sensor Logger is batching slowly or the rate is set low. Check the app's rate setting, and make sure only the accelerometer is enabled — extra sensors eat the push budget.</dd>
+            <dt>Criterion 04 fails — floor taps do nothing</dt>
+            <dd>The phone is on carpet, or in a case that damps it. Put it directly on hard floor, screen up, no case. This is a real finding, not a bug: it is exactly the soft-flooring limitation in the proposal's risk table.</dd>
+          </dl></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step" data-step="P1.2">
+      <header>
+        <label><input type="checkbox"></label>
+        <div class="hgroup"><span class="sid">P1.2</span><h4>Ring buffer</h4></div>
+        <span class="tbox">30 min</span>
+      </header>
+      <div class="body">
+        <div class="blk goal"><div class="lbl">Goal</div>
+          <p>A fixed-memory rolling window of the last 30 seconds, so we can look backwards when
+          something happens.</p></div>
+        <div class="blk do"><div class="lbl">Do</div>
+          <div class="filename">opoyo/ring.py</div>
+<pre><code>import numpy as np
+import threading
+
+class RingBuffer:
+    """Fixed-size circular float buffer. Thread-safe for one writer, many readers."""
+
+    def __init__(self, capacity: int):
+        self.capacity = int(capacity)
+        self._buf = np.zeros(self.capacity, dtype=np.float32)
+        self._n = 0                      # total samples ever written
+        self._lock = threading.Lock()
+
+    def push(self, samples) -> None:
+        s = np.asarray(samples, dtype=np.float32).ravel()
+        if s.size == 0:
+            return
+        if s.size >= self.capacity:
+            s = s[-self.capacity:]
+        with self._lock:
+            start = self._n % self.capacity
+            end = start + s.size
+            if end &lt;= self.capacity:
+                self._buf[start:end] = s
+            else:
+                cut = self.capacity - start
+                self._buf[start:] = s[:cut]
+                self._buf[:end - self.capacity] = s[cut:]
+            self._n += s.size
+
+    def last(self, k: int) -> np.ndarray:
+        """Most recent k samples, oldest first. Zero-padded if not yet filled."""
+        k = min(int(k), self.capacity)
+        with self._lock:
+            if self._n == 0:
+                return np.zeros(k, dtype=np.float32)
+            end = self._n % self.capacity
+            out = np.concatenate([self._buf[end:], self._buf[:end]])
+            return out[-k:].copy()
+
+    @property
+    def total(self) -> int:
+        return self._n</code></pre>
+          <div class="filename">tests/test_dsp.py — first half</div>
+<pre><code>import numpy as np
+from opoyo.ring import RingBuffer
+
+def test_ring_wraps_and_preserves_order():
+    r = RingBuffer(5)
+    r.push([1, 2, 3])
+    assert list(r.last(3)) == [1, 2, 3]
+    r.push([4, 5, 6, 7])          # forces a wrap
+    assert list(r.last(5)) == [3, 4, 5, 6, 7]
+    assert r.total == 7
+
+def test_ring_oversized_push_keeps_tail():
+    r = RingBuffer(4)
+    r.push(np.arange(10))
+    assert list(r.last(4)) == [6, 7, 8, 9]
+
+def test_ring_pads_when_empty():
+    r = RingBuffer(8)
+    assert r.last(4).tolist() == [0, 0, 0, 0]</code></pre>
+        </div>
+        <div class="blk verify"><div class="lbl">Verify</div>
+          <div class="verify-box">
+            <div class="crit"><span class="tick">01</span><span><code class="inl">pytest tests/test_dsp.py -q</code> reports <strong>3 passed</strong></span></div>
+          </div>
+        </div>
+        <div class="blk fail"><div class="lbl">If it fails</div>
+          <div class="fail-box"><dl>
+            <dt>test_ring_wraps_and_preserves_order fails</dt>
+            <dd>Almost always the wrap arithmetic. Print <code>start</code>, <code>end</code> and <code>self._n</code> inside <code>push</code> and walk the second push by hand. Don't guess at index maths — trace it.</dd>
+          </dl></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step" data-step="P1.3">
+      <header>
+        <label><input type="checkbox"></label>
+        <div class="hgroup"><span class="sid">P1.3</span><h4>Record the fixtures — the most valuable half hour of the week</h4></div>
+        <span class="tbox">45 min</span>
+      </header>
+      <div class="body">
+        <div class="blk goal"><div class="lbl">Goal</div>
+          <p>Recorded CSV traces of real events, so every later phase can be tested deterministically
+          without a phone, a floor, or another person.</p></div>
+        <div class="note"><span class="t">Why this matters</span>
+          <p>After this step you can develop on a train. Every VERIFY block from P2 onward replays a
+          fixture instead of asking you to drop something. It also means a failure is reproducible
+          rather than "it did it once".</p></div>
+        <div class="blk do"><div class="lbl">Do</div>
+          <p>Extend <code class="inl">scripts/sniff.py</code> into a recorder that writes
+          <code class="inl">t,x,y,z</code> rows to a CSV, then capture <strong>at least 8 of each</strong>:</p>
+          <div class="tablewrap">
+            <table>
+              <thead><tr><th>Label</th><th>How to produce it</th><th>Count</th></tr></thead>
+              <tbody>
+                <tr><td><code>fall</code></td><td>Drop a full backpack (8–12 kg) flat onto the floor from about 1 m. Soft, heavy, articulated — the closest safe proxy for a body.</td><td>10</td></tr>
+                <tr><td><code>heeldrop</code></td><td>Stand on your toes, drop onto both heels. Also counts as <code>fall</code> for training.</td><td>10</td></tr>
+                <tr><td><code>rigid</code></td><td>Drop a book, then a saucepan, then a shoe. Hard, light, fast decay.</td><td>10</td></tr>
+                <tr><td><code>door</code></td><td>Slam a door in the same room.</td><td>8</td></tr>
+                <tr><td><code>walk</code></td><td>Walk past the phone normally, five paces.</td><td>8</td></tr>
+                <tr><td><code>quiet</code></td><td>30 seconds of nothing, twice. Also the noise-floor reference.</td><td>2</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>Name every file <code class="inl">data/&lt;label&gt;_&lt;nn&gt;.csv</code>. Copy two of each into
+          <code class="inl">data/samples/</code> and commit those — the rest stay local.</p>
+        </div>
+        <div class="blk verify"><div class="lbl">Verify</div>
+          <div class="verify-box">
+            <div class="crit"><span class="tick">01</span><code class="inl">ls data/*.csv | wc -l</code> is <strong>48 or more</strong></div>
+            <div class="crit"><span class="tick">02</span><span>Every file has a header row and more than 200 data rows</span></div>
+            <div class="crit"><span class="tick">03</span><span>Opening one <code>fall</code> and one <code>rigid</code> file in a plot, the fall's tail is visibly longer</span></div>
+            <div class="crit"><span class="tick">04</span><span><code class="inl">data/samples/</code> is committed and contains 12 files</span></div>
+          </div>
+        </div>
+        <div class="blk fail"><div class="lbl">If it fails</div>
+          <div class="fail-box"><dl>
+            <dt>Criterion 03 — fall and rigid look identical</dt>
+            <dd>Your drop height is too low or the phone is too far away. Move the phone to within 2 m and drop from waist height. If they still look identical on hard floor, record it and post to chat — that is a genuine finding the team needs to know about tonight, not Wednesday.</dd>
+            <dt>Files are tiny</dt>
+            <dd>The recorder is being restarted between events. Record one long session per label and split afterwards.</dd>
+          </dl></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= P2 ================= -->
+  <section id="p2">
+    <div class="sechead"><span class="idx">P2</span><h2>Trigger stage</h2></div>
+    <p class="lede">
+      A cheap always-on gate that decides only one thing: did something hit the floor? The expensive
+      classifier runs only when this fires.
+    </p>
+
+    <div class="step" data-step="P2.1">
+      <header>
+        <label><input type="checkbox"></label>
+        <div class="hgroup"><span class="sid">P2.1</span><h4>Magnitude, high-pass, rolling RMS</h4></div>
+        <span class="tbox">40 min</span>
+      </header>
+      <div class="body">
+        <div class="blk goal"><div class="lbl">Goal</div>
+          <p>Turn three noisy axes into one clean energy trace with gravity removed.</p></div>
+        <div class="blk do"><div class="lbl">Do</div>
+          <div class="filename">opoyo/dsp.py</div>
+<pre><code>import numpy as np
+from scipy.signal import butter, sosfilt, sosfilt_zi
+
+def magnitude(x, y, z) -> np.ndarray:
+    """Vector magnitude. Gravity is still in here; the high-pass removes it."""
+    return np.sqrt(np.asarray(x)**2 + np.asarray(y)**2 + np.asarray(z)**2)
+
+def make_highpass(cutoff_hz: float, fs: float, order: int = 2):
+    """2nd-order Butterworth high-pass as second-order sections (numerically stable)."""
+    return butter(order, cutoff_hz / (fs / 2.0), btype="highpass", output="sos")
+
+class StreamingFilter:
+    """Stateful filter so chunk boundaries don't create fake transients."""
+    def __init__(self, sos):
+        self.sos = sos
+        self.zi = None
+
+    def __call__(self, chunk) -> np.ndarray:
+        c = np.asarray(chunk, dtype=np.float64)
+        if c.size == 0:
+            return c.astype(np.float32)
+        if self.zi is None:
+            self.zi = sosfilt_zi(self.sos) * c[0]
+        out, self.zi = sosfilt(self.sos, c, zi=self.zi)
+        return out.astype(np.float32)
+
+def rolling_rms(sig, win: int) -> np.ndarray:
+    """RMS over a sliding window, same length as input."""
+    s = np.asarray(sig, dtype=np.float64)
+    if win &lt;= 1 or s.size == 0:
+        return np.abs(s).astype(np.float32)
+    p = np.pad(s**2, (win - 1, 0), mode="edge")
+    c = np.cumsum(p)
+    out = (c[win - 1:] - np.concatenate([[0.0], c[:-win]])) / win
+    return np.sqrt(np.maximum(out, 0.0)).astype(np.float32)
+
+def mad(v) -> float:
+    """Median absolute deviation, scaled to be comparable to a standard deviation."""
+    a = np.asarray(v, dtype=np.float64)
+    m = np.median(a)
+    return float(1.4826 * np.median(np.abs(a - m)))</code></pre>
+        </div>
+        <div class="blk verify"><div class="lbl">Verify</div>
+          <p>Add to <code class="inl">tests/test_dsp.py</code>:</p>
+<pre><code>from opoyo.dsp import magnitude, make_highpass, StreamingFilter, rolling_rms, mad
+
+def test_highpass_removes_gravity():
+    fs = 100
+    sig = np.full(fs * 5, 9.81, dtype=np.float32)      # pure DC
+    f = StreamingFilter(make_highpass(2.0, fs))
+    out = f(sig)
+    assert abs(out[-fs:].mean()) &lt; 0.05                # settled to ~0
+
+def test_streaming_filter_matches_chunked():
+    fs, rng = 100, np.random.default_rng(0)
+    sig = rng.normal(0, 1, fs * 3).astype(np.float32)
+    whole = StreamingFilter(make_highpass(2.0, fs))(sig)
+    f = StreamingFilter(make_highpass(2.0, fs))
+    chunked = np.concatenate([f(sig[i:i+37]) for i in range(0, sig.size, 37)])
+    assert np.allclose(whole, chunked, atol=1e-4)      # no boundary artefacts
+
+def test_rolling_rms_length_and_value():
+    x = np.ones(100)
+    r = rolling_rms(x, 10)
+    assert r.size == 100 and abs(r[-1] - 1.0) &lt; 1e-6
+
+def test_mad_of_constant_is_zero():
+    assert mad(np.full(50, 3.0)) == 0.0</code></pre>
+          <div class="verify-box">
+            <div class="crit"><span class="tick">01</span><span><code class="inl">pytest tests/test_dsp.py -q</code> reports <strong>7 passed</strong></span></div>
+            <div class="crit"><span class="tick">02</span><span><code class="inl">test_streaming_filter_matches_chunked</code> passes — this is the one that matters; it proves live streaming won't invent spikes</span></div>
+          </div>
+        </div>
+        <div class="blk fail"><div class="lbl">If it fails</div>
+          <div class="fail-box"><dl>
+            <dt>test_streaming_filter_matches_chunked fails</dt>
+            <dd>You dropped the filter state. <code>zi</code> must persist across calls and be seeded from the first sample, not zeros — seeding with zeros produces a large fake transient at startup that will fire the trigger every time you launch.</dd>
+            <dt>test_highpass_removes_gravity fails</dt>
+            <dd>Cutoff or sample rate is wrong. At <code>fs=100</code>, <code>2 Hz</code> should settle within about a second; you're checking the last second only.</dd>
+          </dl></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step" data-step="P2.2">
+      <header>
+        <label><input type="checkbox"></label>
+        <div class="hgroup"><span class="sid">P2.2</span><h4>Adaptive trigger</h4></div>
+        <span class="tbox">45 min</span>
+      </header>
+      <div class="body">
+        <div class="blk goal"><div class="lbl">Goal</div>
+          <p>Fire when energy exceeds the room's own recent noise floor — not a fixed number, so it
+          works in a quiet flat and a loud venue.</p></div>
+        <div class="blk do"><div class="lbl">Do</div>
+          <div class="filename">opoyo/dsp.py — append</div>
+<pre><code>from dataclasses import dataclass
+
+@dataclass
+class Trigger:
+    fs: float
+    rms_window_ms: float = 100.0
+    baseline_seconds: float = 10.0
+    k_mad: float = 6.0
+    refractory_s: float = 2.0
+    min_peak_mag: float = 3.0
+
+    def __post_init__(self):
+        self._win = max(1, int(self.fs * self.rms_window_ms / 1000.0))
+        self._hist = []                     # recent RMS values for the baseline
+        self._hist_max = int(self.fs * self.baseline_seconds / self._win) + 1
+        self._cooldown = 0.0                # seconds remaining
+
+    def threshold(self) -> float:
+        if len(self._hist) &lt; 5:
+            return float("inf")             # refuse to fire until the room is learned
+        h = np.asarray(self._hist)
+        return float(np.median(h) + self.k_mad * max(mad(h), 1e-3))
+
+    def process(self, chunk) -> tuple[bool, float]:
+        """Feed a chunk of high-passed magnitude. Returns (fired, peak_rms)."""
+        r = rolling_rms(chunk, self._win)
+        peak = float(r.max()) if r.size else 0.0
+        dt = (len(chunk) / self.fs) if self.fs else 0.0
+
+        thr = self.threshold()
+        fired = (
+            self._cooldown &lt;= 0.0
+            and peak &gt; thr
+            and peak &gt; self.min_peak_mag
+        )
+
+        if fired:
+            self._cooldown = self.refractory_s
+        else:
+            self._cooldown = max(0.0, self._cooldown - dt)
+            # only quiet audio updates the baseline, so a fall can't raise its own threshold
+            if peak &lt; thr or thr == float("inf"):
+                self._hist.append(peak)
+                if len(self._hist) &gt; self._hist_max:
+                    self._hist.pop(0)
+        return fired, peak</code></pre>
+          <div class="note warn"><span class="t">The subtle bit</span>
+            <p>The baseline updates <em>only on quiet chunks</em>. If you let loud chunks in, a fall
+            raises the threshold that is supposed to catch it, and repeated events get progressively
+            harder to detect. This is the single most common bug in adaptive-threshold detectors.</p></div>
+        </div>
+        <div class="blk verify"><div class="lbl">Verify</div>
+<pre><code>def test_trigger_ignores_quiet_and_fires_on_impact():
+    fs = 100
+    t = Trigger(fs=fs, k_mad=6.0, min_peak_mag=1.0, refractory_s=1.0)
+    rng = np.random.default_rng(1)
+    for _ in range(40):                                  # 4 s of quiet
+        fired, _ = t.process(rng.normal(0, 0.05, 10))
+        assert not fired
+    impact = np.zeros(10); impact[3] = 12.0
+    fired, peak = t.process(impact)
+    assert fired and peak &gt; 1.0
+
+def test_trigger_refractory_blocks_double_fire():
+    fs = 100
+    t = Trigger(fs=fs, k_mad=6.0, min_peak_mag=1.0, refractory_s=2.0)
+    rng = np.random.default_rng(2)
+    for _ in range(40):
+        t.process(rng.normal(0, 0.05, 10))
+    spike = np.zeros(10); spike[3] = 12.0
+    assert t.process(spike)[0] is True
+    assert t.process(spike)[0] is False                  # inside refractory
+
+def test_trigger_baseline_not_poisoned_by_impacts():
+    fs = 100
+    t = Trigger(fs=fs, k_mad=6.0, min_peak_mag=1.0, refractory_s=0.0)
+    rng = np.random.default_rng(3)
+    for _ in range(40):
+        t.process(rng.normal(0, 0.05, 10))
+    before = t.threshold()
+    for _ in range(10):
+        spike = np.zeros(10); spike[3] = 15.0
+        t.process(spike)
+    assert t.threshold() &lt; before * 1.5                  # threshold did not run away</code></pre>
+          <div class="verify-box">
+            <div class="crit"><span class="tick">01</span><span><code class="inl">pytest tests/test_dsp.py -q</code> reports <strong>10 passed</strong></span></div>
+            <div class="crit"><span class="tick">02</span><span><code class="inl">test_trigger_baseline_not_poisoned_by_impacts</code> passes</span></div>
+          </div>
+        </div>
+        <div class="blk fail"><div class="lbl">If it fails</div>
+          <div class="fail-box"><dl>
+            <dt>Trigger never fires</dt>
+            <dd><code>threshold()</code> is still <code>inf</code> — fewer than 5 baseline samples. Feed more quiet chunks first. In live use this means the system needs ~10 s of warm-up before it will alert; say so in the demo.</dd>
+            <dt>Baseline test fails</dt>
+            <dd>You're appending <code>peak</code> to <code>_hist</code> unconditionally. Re-read the guard.</dd>
+          </dl></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step" data-step="P2.3">
+      <header>
+        <label><input type="checkbox"></label>
+        <div class="hgroup"><span class="sid">P2.3</span><h4>Replay harness</h4></div>
+        <span class="tbox">30 min</span>
+      </header>
+      <div class="body">
+        <div class="blk goal"><div class="lbl">Goal</div>
+          <p>Push any recorded CSV through the trigger and print what fired. This is your debugger
+          for the rest of the week.</p></div>
+        <div class="blk do"><div class="lbl">Do</div>
+          <div class="filename">scripts/replay.py</div>
+<pre><code>import sys, csv, numpy as np
+from opoyo.config import CFG
+from opoyo.dsp import magnitude, make_highpass, StreamingFilter, Trigger
+
+def load(path):
+    xs, ys, zs = [], [], []
+    with open(path) as f:
+        for row in csv.DictReader(f):
+            xs.append(float(row["x"])); ys.append(float(row["y"])); zs.append(float(row["z"]))
+    return np.array(xs), np.array(ys), np.array(zs)
+
+def main(path, chunk=10):
+    fs = CFG.sensor.accel_rate_hz
+    x, y, z = load(path)
+    mag = magnitude(x, y, z)
+    hp = StreamingFilter(make_highpass(CFG.trigger.highpass_hz, fs))
+    trg = Trigger(fs=fs, rms_window_ms=CFG.trigger.rms_window_ms,
+                  baseline_seconds=CFG.trigger.baseline_seconds,
+                  k_mad=CFG.trigger.k_mad, refractory_s=CFG.trigger.refractory_s,
+                  min_peak_mag=CFG.trigger.min_peak_mag)
+    fires = []
+    for i in range(0, mag.size, chunk):
+        fired, peak = trg.process(hp(mag[i:i + chunk]))
+        if fired:
+            fires.append((i / fs, peak))
+    print(f"{path}: {len(fires)} trigger(s)")
+    for t, p in fires:
+        print(f"  t={t:6.2f}s  peak={p:6.2f}")
+    return fires
+
+if __name__ == "__main__":
+    main(sys.argv[1])</code></pre>
+        </div>
+        <div class="blk verify"><div class="lbl">Verify</div>
+          <div class="verify-box">
+            <div class="crit"><span class="tick">01</span><span><code class="inl">python scripts/replay.py data/quiet_01.csv</code> reports <strong>0 triggers</strong></span></div>
+            <div class="crit"><span class="tick">02</span><span><code class="inl">python scripts/replay.py data/fall_01.csv</code> reports <strong>1 trigger</strong></span></div>
+            <div class="crit"><span class="tick">03</span><span>Across all 10 <code>fall_*.csv</code>, at least <strong>9</strong> produce exactly one trigger</span></div>
+            <div class="crit"><span class="tick">04</span><span>Across both <code>quiet_*.csv</code>, total triggers is <strong>0</strong></span></div>
+          </div>
+          <p>Sweep them all:</p>
+<pre class="term"><code>for f in data/*.csv; do python scripts/replay.py "$f" | head -1; done</code></pre>
+        </div>
+        <div class="blk fail"><div class="lbl">If it fails</div>
+          <div class="fail-box"><dl>
+            <dt>Quiet files produce triggers</dt>
+            <dd>Raise <code>trigger.k_mad</code> in config (try 8, then 10). Change the config, not the code.</dd>
+            <dt>Fall files produce zero triggers</dt>
+            <dd>Lower <code>k_mad</code> to 4, or lower <code>min_peak_mag</code>. If you have to go below <code>k_mad: 3</code> to catch falls, your recordings are too weak — go back to P1.3 and record closer to the phone.</dd>
+            <dt>Fall files produce 3–4 triggers each</dt>
+            <dd>Refractory is too short for the ringing. Raise <code>refractory_s</code> to 3.0.</dd>
+          </dl></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="note"><span class="t">Monday gate</span>
+      <p>End of day Monday you should be able to run <code class="inl">pytest -q</code> green and
+      replay a fixture that triggers correctly. If you are not here, post status tonight — Tuesday's
+      plan changes if Monday slipped.</p></div>
+  </section>
+
+  <!-- ================= P3 ================= -->
+  <section id="p3">
+    <div class="sechead"><span class="idx">P3</span><h2>Features &amp; classifier</h2></div>
+    <p class="lede">
+      Separate a body from a dropped pan. Both hit the floor about as hard; what differs is where
+      the energy sits and how long it takes to die away.
+    </p>
+
+    <div class="step" data-step="P3.1">
+      <header>
+        <label><input type="checkbox"></label>
+        <div class="hgroup"><span class="sid">P3.1</span><h4>Feature extraction</h4></div>
+        <span class="tbox">50 min</span>
+      </header>
+      <div class="body">
+        <div class="blk goal"><div class="lbl">Goal</div>
+          <p>A 2-second window becomes seven numbers that a model — or a human — can reason about.</p></div>
+        <div class="blk do"><div class="lbl">Do</div>
+          <div class="filename">opoyo/features.py</div>
+<pre><code>import numpy as np
+
+FEATURE_NAMES = ["peak", "rms", "crest", "rise_ms",
+                 "decay_ms", "low_ratio", "centroid_hz"]
+
+def extract(window: np.ndarray, fs: float) -> dict[str, float]:
+    """window: high-passed acceleration magnitude, ~2 s. Never raises."""
+    w = np.asarray(window, dtype=np.float64)
+    if w.size &lt; 8:
+        return {k: 0.0 for k in FEATURE_NAMES}
+
+    env = np.abs(w)
+    peak = float(env.max())
+    rms = float(np.sqrt((w**2).mean()))
+    pk_i = int(env.argmax())
+    crest = peak / rms if rms &gt; 1e-9 else 0.0
+
+    # rise: 10% of peak up to the peak
+    thr = 0.1 * peak
+    pre = np.nonzero(env[:pk_i + 1] &gt;= thr)[0]
+    rise_ms = ((pk_i - pre[0]) / fs * 1000.0) if pre.size else 0.0
+
+    # decay: peak down to 10% of peak — the key discriminator
+    post = np.nonzero(env[pk_i:] &lt;= thr)[0]
+    decay_ms = (post[0] / fs * 1000.0) if post.size else (env.size - pk_i) / fs * 1000.0
+
+    # spectrum
+    spec = np.abs(np.fft.rfft(w * np.hanning(w.size)))
+    freqs = np.fft.rfftfreq(w.size, d=1.0 / fs)
+    total = float(spec.sum()) + 1e-12
+    low_ratio = float(spec[freqs &lt;= 20.0].sum() / total)
+    centroid_hz = float((freqs * spec).sum() / total)
+
+    return {"peak": peak, "rms": rms, "crest": crest, "rise_ms": rise_ms,
+            "decay_ms": decay_ms, "low_ratio": low_ratio, "centroid_hz": centroid_hz}
+
+def to_vector(feats: dict[str, float]) -> np.ndarray:
+    return np.array([feats[k] for k in FEATURE_NAMES], dtype=np.float64)</code></pre>
+        </div>
+        <div class="blk verify"><div class="lbl">Verify</div>
+          <div class="filename">tests/test_features.py</div>
+<pre><code>import numpy as np
+from opoyo.features import extract, FEATURE_NAMES
+
+def _decaying(fs, tau_s, f_hz, n_s=2.0):
+    t = np.arange(int(fs * n_s)) / fs
+    return np.sin(2 * np.pi * f_hz * t) * np.exp(-t / tau_s)
+
+def test_all_features_present_and_finite():
+    f = extract(_decaying(100, 0.3, 12), 100)
+    assert set(f) == set(FEATURE_NAMES)
+    assert all(np.isfinite(v) for v in f.values())
+
+def test_body_decays_slower_than_rigid_object():
+    soft = extract(_decaying(100, 0.45, 10), 100)     # body-like
+    hard = extract(_decaying(100, 0.04, 38), 100)     # pan-like
+    assert soft["decay_ms"] &gt; hard["decay_ms"] * 2
+
+def test_body_has_more_low_frequency_energy():
+    soft = extract(_decaying(100, 0.45, 8), 100)
+    hard = extract(_decaying(100, 0.04, 40), 100)
+    assert soft["low_ratio"] &gt; hard["low_ratio"]
+
+def test_short_window_returns_zeros_not_error():
+    assert extract(np.array([1.0, 2.0]), 100)["peak"] == 0.0</code></pre>
+          <div class="verify-box">
+            <div class="crit"><span class="tick">01</span><span><code class="inl">pytest tests/test_features.py -q</code> reports <strong>4 passed</strong></span></div>
+            <div class="crit"><span class="tick">02</span><span>On your own data: mean <code class="inl">decay_ms</code> for <code>fall_*</code> is at least <strong>1.5&times;</strong> the mean for <code>rigid_*</code></span></div>
+          </div>
+        </div>
+        <div class="blk fail"><div class="lbl">If it fails</div>
+          <div class="fail-box"><dl>
+            <dt>Criterion 02 fails on real data</dt>
+            <dd>Check your window is actually centred on the impact — if the 2 s window starts <em>after</em> the peak, decay is meaningless. Print <code>pk_i</code>; it should sit near <code>pre_s * fs</code>, not at index 0.</dd>
+          </dl></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step" data-step="P3.2">
+      <header>
+        <label><input type="checkbox"></label>
+        <div class="hgroup"><span class="sid">P3.2</span><h4>Rule classifier — the one that is guaranteed to exist</h4></div>
+        <span class="tbox">30 min</span>
+      </header>
+      <div class="body">
+        <div class="blk goal"><div class="lbl">Goal</div>
+          <p>A working <code class="inl">score()</code> today, with no training data required, so the
+          pipeline is never blocked on a model.</p></div>
+        <div class="blk do"><div class="lbl">Do</div>
+          <div class="filename">opoyo/classify.py</div>
+<pre><code>from typing import Protocol
+import numpy as np
+from opoyo.features import to_vector
+
+class Classifier(Protocol):
+    def score(self, feats: dict[str, float]) -> float: ...
+
+class RuleClassifier:
+    """Transparent baseline. Long decay + low-frequency energy = body-like."""
+    def __init__(self, decay_ref_ms=180.0, low_ref=0.45, crest_ref=6.0):
+        self.decay_ref_ms, self.low_ref, self.crest_ref = decay_ref_ms, low_ref, crest_ref
+
+    @staticmethod
+    def _sig(x):
+        return 1.0 / (1.0 + np.exp(-x))
+
+    def score(self, feats):
+        d = feats.get("decay_ms", 0.0) / self.decay_ref_ms
+        l = feats.get("low_ratio", 0.0) / self.low_ref
+        c = self.crest_ref / max(feats.get("crest", 1e-6), 1e-6)
+        z = 1.6 * (d - 1.0) + 1.4 * (l - 1.0) + 0.6 * (c - 1.0)
+        return float(np.clip(self._sig(z), 0.0, 1.0))
+
+class ModelClassifier:
+    """Trained sklearn model. Falls back to RuleClassifier if the file is missing."""
+    def __init__(self, path):
+        import joblib
+        self.model = joblib.load(path)
+
+    def score(self, feats):
+        v = to_vector(feats).reshape(1, -1)
+        return float(self.model.predict_proba(v)[0, 1])
+
+def load_classifier(cfg) -> Classifier:
+    from pathlib import Path
+    p = Path(cfg.classify.model_path)
+    if p.exists():
+        try:
+            return ModelClassifier(p)
+        except Exception as e:
+            print(f"[classify] model load failed ({e}); using RuleClassifier")
+    return RuleClassifier()</code></pre>
+        </div>
+        <div class="blk verify"><div class="lbl">Verify</div>
+          <div class="verify-box">
+            <div class="crit"><span class="tick">01</span><span>Rule classifier scores a synthetic body window <strong>&gt; 0.6</strong> and a synthetic pan window <strong>&lt; 0.4</strong></span></div>
+            <div class="crit"><span class="tick">02</span><span><code class="inl">load_classifier(CFG)</code> returns a <code class="inl">RuleClassifier</code> when <code class="inl">models/clf.joblib</code> is absent — and does not raise</span></div>
+          </div>
+        </div>
+        <div class="blk fail"><div class="lbl">If it fails</div>
+          <div class="fail-box"><dl>
+            <dt>Everything scores near 0.5</dt>
+            <dd>Your reference constants don't match your floor. Print the mean <code>decay_ms</code> and <code>low_ratio</code> for your <code>fall_*</code> files and set <code>decay_ref_ms</code> and <code>low_ref</code> to roughly the midpoint between the fall and rigid means.</dd>
+          </dl></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step" data-step="P3.3">
+      <header>
+        <label><input type="checkbox"></label>
+        <div class="hgroup"><span class="sid">P3.3</span><h4>Train the real model</h4></div>
+        <span class="tbox">50 min</span>
+      </header>
+      <div class="body">
+        <div class="blk goal"><div class="lbl">Goal</div>
+          <p>A gradient-boosting classifier on your own recordings, reported honestly with
+          precision, recall and a confusion matrix — never accuracy.</p></div>
+        <div class="blk do"><div class="lbl">Do</div>
+          <p>Write <code class="inl">scripts/train.py</code> to: walk <code class="inl">data/*.csv</code>,
+          label <code>fall</code>/<code>heeldrop</code> as positive and everything else as negative,
+          extract the window around each trigger, fit
+          <code class="inl">GradientBoostingClassifier</code>, and save to
+          <code class="inl">models/clf.joblib</code>. Use
+          <code class="inl">StratifiedKFold(n_splits=5)</code> and print the report.</p>
+          <div class="note warn"><span class="t">Accuracy is banned</span>
+            <p>Falls are rare, so a model that always says "no fall" scores well on accuracy and is
+            useless. Report precision, recall, F1 and the confusion matrix. This is stated in your
+            proposal — a judge may well ask, and the honest answer is a strong one.</p></div>
+        </div>
+        <div class="blk verify"><div class="lbl">Verify</div>
+          <div class="verify-box">
+            <div class="crit"><span class="tick">01</span><span><code class="inl">python scripts/train.py</code> writes <code class="inl">models/clf.joblib</code></span></div>
+            <div class="crit"><span class="tick">02</span><span>Cross-validated <strong>recall &ge; 0.90</strong> on the positive class</span></div>
+            <div class="crit"><span class="tick">03</span><span>Cross-validated <strong>precision &ge; 0.70</strong></span></div>
+            <div class="crit"><span class="tick">04</span><span>The printed confusion matrix is saved to <code class="inl">docs/confusion.txt</code> — you need it for the pitch</span></div>
+            <div class="crit"><span class="tick">05</span><span><code class="inl">load_classifier(CFG)</code> now returns <code class="inl">ModelClassifier</code></span></div>
+          </div>
+        </div>
+        <div class="blk fail"><div class="lbl">If it fails</div>
+          <div class="fail-box"><dl>
+            <dt>Recall below 0.90</dt>
+            <dd>Lower the decision threshold rather than retraining — you want recall over precision here, because a missed fall is a long lie and a false alarm is a phone call. Record the trade-off; it is a good thing to say on stage.</dd>
+            <dt>Precision near 1.0 and recall near 1.0 on 60 samples</dt>
+            <dd>Be suspicious, not pleased. You are probably leaking: the same physical event split across train and test. Group by source file, not by window.</dd>
+            <dt>Not enough data</dt>
+            <dd>Ship <code>RuleClassifier</code>. It works, it's explainable, and it is a legitimate baseline. Do not burn Tuesday chasing a model.</dd>
+          </dl></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= P4 ================= -->
+  <section id="p4">
+    <div class="sechead"><span class="idx">P4</span><h2>Acoustic veto</h2></div>
+    <p class="lede">
+      The differentiator. A pan makes a convincing floor impulse but announces itself in the air with
+      a metallic ring; a television saturates the microphone and leaves the floor flat.
+    </p>
+
+    <div class="step" data-step="P4.1">
+      <header>
+        <label><input type="checkbox"></label>
+        <div class="hgroup"><span class="sid">P4.1</span><h4>Cache YAMNet before you need it</h4></div>
+        <span class="tbox">30 min</span>
+      </header>
+      <div class="body">
+        <div class="blk goal"><div class="lbl">Goal</div>
+          <p>The model on local disk and proven to work offline.</p></div>
+        <div class="note stop"><span class="t">Venue risk</span>
+          <p>TF Hub downloads on first use. If the model isn't cached, your demo dies the moment the
+          venue Wi-Fi is slow. Cache it today and test with Wi-Fi <em>off</em>.</p></div>
+        <div class="blk do"><div class="lbl">Do</div>
+<pre class="term"><code>export TFHUB_CACHE_DIR=$PWD/models/tfhub
+mkdir -p "$TFHUB_CACHE_DIR"
+python -c "import tensorflow_hub as hub; hub.load('https://tfhub.dev/google/yamnet/1'); print('cached')"
+echo 'TFHUB_CACHE_DIR=./models/tfhub' &gt;&gt; .env</code></pre>
+        </div>
+        <div class="blk verify"><div class="lbl">Verify</div>
+          <div class="verify-box">
+            <div class="crit"><span class="tick">01</span><span><code class="inl">models/tfhub/</code> is non-empty (<code class="inl">du -sh models/tfhub</code> shows tens of MB)</span></div>
+            <div class="crit"><span class="tick">02</span><span><strong>Turn Wi-Fi off</strong>, re-run the load command, and it still prints <code class="inl">cached</code></span></div>
+          </div>
+        </div>
+        <div class="blk fail"><div class="lbl">If it fails</div>
+          <div class="fail-box"><dl>
+            <dt>Fails offline</dt>
+            <dd><code>TFHUB_CACHE_DIR</code> wasn't set when you downloaded. Set it, delete <code>/tmp/tfhub_modules</code>, download again in the same shell.</dd>
+            <dt>Download hangs</dt>
+            <dd>Fall back to Kaggle Models, which hosts the same YAMNet weights, or set <code>veto.enabled: false</code> and keep going. The veto is Should, not Must — do not lose two hours here.</dd>
+          </dl></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step" data-step="P4.2">
+      <header>
+        <label><input type="checkbox"></label>
+        <div class="hgroup"><span class="sid">P4.2</span><h4>Microphone capture and the veto call</h4></div>
+        <span class="tbox">60 min</span>
+      </header>
+      <div class="body">
+        <div class="blk goal"><div class="lbl">Goal</div>
+          <p><code class="inl">check(audio) -&gt; (veto: bool, label: str, score: float)</code> over the
+          same window the trigger fired on.</p></div>
+        <div class="blk do"><div class="lbl">Do</div>
+          <div class="filename">opoyo/veto.py</div>
+<pre><code>import csv, os
+import numpy as np
+
+class AcousticVeto:
+    """YAMNet says what the room sounded like. Never raises — a broken veto
+    must degrade to 'no veto', never to a crash that loses a real fall."""
+
+    def __init__(self, classes, threshold=0.30):
+        self.classes = set(classes)
+        self.threshold = threshold
+        self.ok = False
+        try:
+            import tensorflow_hub as hub
+            self.model = hub.load("https://tfhub.dev/google/yamnet/1")
+            path = self.model.class_map_path().numpy().decode()
+            with open(path) as f:
+                self.names = [r["display_name"] for r in csv.DictReader(f)]
+            self.ok = True
+        except Exception as e:
+            print(f"[veto] disabled: {e}")
+
+    def check(self, audio_16k) -> tuple[bool, str, float]:
+        if not self.ok:
+            return False, "", 0.0
+        try:
+            w = np.asarray(audio_16k, dtype=np.float32).ravel()
+            if w.size &lt; 16000:                       # pad to at least 1 s
+                w = np.pad(w, (0, 16000 - w.size))
+            w = np.clip(w, -1.0, 1.0)
+            scores, _, _ = self.model(w)
+            mean = scores.numpy().mean(axis=0)
+            best_label, best_score = "", 0.0
+            for i, s in enumerate(mean):
+                if self.names[i] in self.classes and s &gt; best_score:
+                    best_label, best_score = self.names[i], float(s)
+            return (best_score &gt;= self.threshold), best_label, best_score
+        except Exception as e:
+            print(f"[veto] error, passing through: {e}")
+            return False, "", 0.0</code></pre>
+          <p>Capture audio into a second <code class="inl">RingBuffer</code> at 16 kHz with
+          <code class="inl">sounddevice.InputStream(samplerate=16000, channels=1, dtype='float32')</code>,
+          and read the last 2 seconds when the trigger fires.</p>
+        </div>
+        <div class="blk verify"><div class="lbl">Verify</div>
+          <div class="verify-box">
+            <div class="crit"><span class="tick">01</span><span>Playing speech or TV audio near the mic, <code class="inl">check()</code> returns <code class="inl">veto=True</code> with a sensible label</span></div>
+            <div class="crit"><span class="tick">02</span><span>In a quiet room, <code class="inl">check()</code> returns <code class="inl">veto=False</code></span></div>
+            <div class="crit"><span class="tick">03</span><span>Dropping a backpack in a quiet room returns <code class="inl">veto=False</code> — the veto must not suppress real falls</span></div>
+            <div class="crit"><span class="tick">04</span><span>Passing <code class="inl">np.zeros(100)</code> returns <code class="inl">(False, "", 0.0)</code> and does not raise</span></div>
+          </div>
+        </div>
+        <div class="blk fail"><div class="lbl">If it fails</div>
+          <div class="fail-box"><dl>
+            <dt>Criterion 03 fails — real falls get vetoed</dt>
+            <dd>Your veto class list is too broad, or the threshold too low. Remove <code>Music</code> first; it fires on almost anything percussive. Then raise <code>veto.threshold</code> to 0.45. Losing a real fall is far worse than a false alarm here.</dd>
+            <dt>Mic returns silence</dt>
+            <dd>macOS microphone permission for your terminal. System Settings → Privacy &amp; Security → Microphone.</dd>
+          </dl></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= P5 ================= -->
+  <section id="p5">
+    <div class="sechead"><span class="idx">P5</span><h2>Event state machine</h2></div>
+    <p class="lede">
+      The part that makes this a fall detector rather than an impact sensor: after the impact,
+      did the person get up?
+    </p>
+
+    <div class="step" data-step="P5.1">
+      <header>
+        <label><input type="checkbox"></label>
+        <div class="hgroup"><span class="sid">P5.1</span><h4>Four states, explicit transitions</h4></div>
+        <span class="tbox">60 min</span>
+      </header>
+      <div class="body">
+        <div class="blk goal"><div class="lbl">Goal</div>
+          <p>A machine that is testable without any sensor, audio, or network.</p></div>
+        <div class="flow">
+          <div class="n"><div class="k">State</div><div class="v">IDLE</div><div class="s">Trigger fires → CANDIDATE</div></div>
+          <div class="n"><div class="k">State</div><div class="v">CANDIDATE</div><div class="s">Score + veto. Pass → CONFIRMING, else → IDLE (logged)</div></div>
+          <div class="n"><div class="k">State</div><div class="v">CONFIRMING</div><div class="s">Watch for recovery. Movement → IDLE (recovered)</div></div>
+          <div class="n"><div class="k">State</div><div class="v">ALERT</div><div class="s">Window elapsed with no recovery → escalate</div></div>
+        </div>
+        <div class="blk do"><div class="lbl">Do</div>
+          <p>Write <code class="inl">opoyo/machine.py</code> with an
+          <code class="inl">EventMachine</code> that takes an injected clock
+          (<code class="inl">now()</code>) so tests can move time without sleeping. Its only inputs
+          are: <code class="inl">on_trigger(window, audio)</code> and
+          <code class="inl">tick(rms_now)</code>. Its only output is a
+          <code class="inl">FallEvent</code> passed to a callback.</p>
+          <div class="note"><span class="t">Injected clock</span>
+            <p>Never call <code class="inl">time.sleep()</code> in a test. Pass a fake clock you can
+            advance, or your test suite takes minutes and you'll stop running it.</p></div>
+        </div>
+        <div class="blk verify"><div class="lbl">Verify</div>
+          <div class="verify-box">
+            <div class="crit"><span class="tick">01</span><span>Low score → state <code class="inl">candidate</code>, no alert, event logged</span></div>
+            <div class="crit"><span class="tick">02</span><span>High score + veto true → state <code class="inl">vetoed</code>, no alert</span></div>
+            <div class="crit"><span class="tick">03</span><span>High score, no veto, movement during window → state <code class="inl">recovered</code>, no alert</span></div>
+            <div class="crit"><span class="tick">04</span><span>High score, no veto, no movement, clock advanced past <code class="inl">confirm.window_s</code> → state <code class="inl">alert</code>, callback fired <strong>exactly once</strong></span></div>
+            <div class="crit"><span class="tick">05</span><span><code class="inl">pytest tests/test_machine.py -q</code> reports <strong>5 passed in under 1 second</strong></span></div>
+          </div>
+        </div>
+        <div class="blk fail"><div class="lbl">If it fails</div>
+          <div class="fail-box"><dl>
+            <dt>Callback fires more than once</dt>
+            <dd>You aren't leaving ALERT. Transition to IDLE immediately after emitting, and guard with a flag.</dd>
+            <dt>Tests take 15+ seconds</dt>
+            <dd>You're sleeping instead of injecting a clock. Fix it now — you'll run these tests fifty more times this week.</dd>
+          </dl></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= P6 ================= -->
+  <section id="p6">
+    <div class="sechead"><span class="idx">P6</span><h2>Escalation</h2></div>
+    <p class="lede">
+      The visible payoff. On stage, this is the moment a phone buzzes two seconds after a bag hits
+      the floor.
+    </p>
+
+    <div class="step" data-step="P6.1">
+      <header>
+        <label><input type="checkbox"></label>
+        <div class="hgroup"><span class="sid">P6.1</span><h4>Telegram bot</h4></div>
+        <span class="tbox">30 min</span>
+      </header>
+      <div class="body">
+        <div class="blk goal"><div class="lbl">Goal</div>
+          <p>A message on a real phone within two seconds of an alert.</p></div>
+        <div class="blk do"><div class="lbl">Do</div>
+          <ol>
+            <li>Telegram → <strong>@BotFather</strong> → <code class="inl">/newbot</code> → copy the token into <code class="inl">.env</code></li>
+            <li>Send your new bot any message from the phone that should receive alerts</li>
+            <li>Get the chat id:
+<pre class="term"><code>curl -s "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/getUpdates" | python -m json.tool | grep -A2 '"chat"'</code></pre>
+            </li>
+            <li>Put that id in <code class="inl">.env</code> as <code class="inl">TELEGRAM_CHAT_ID</code></li>
+          </ol>
+          <div class="filename">opoyo/notify.py</div>
+<pre><code>import requests
+from opoyo.config import secret
+
+def send_telegram(text: str, dry_run: bool = True) -> bool:
+    if dry_run:
+        print(f"[DRY RUN telegram] {text}")
+        return True
+    token, chat = secret("TELEGRAM_BOT_TOKEN"), secret("TELEGRAM_CHAT_ID")
+    if not token or not chat:
+        print("[telegram] missing credentials; skipping")
+        return False
+    try:
+        r = requests.post(
+            f"https://api.telegram.org/bot{token}/sendMessage",
+            json={"chat_id": chat, "text": text},
+            timeout=5,
+        )
+        return r.status_code == 200
+    except Exception as e:
+        print(f"[telegram] failed: {e}")
+        return False</code></pre>
+        </div>
+        <div class="blk verify"><div class="lbl">Verify</div>
+          <div class="verify-box">
+            <div class="crit"><span class="tick">01</span><span>With <code class="inl">dry_run=True</code>, the message prints and nothing is sent</span></div>
+            <div class="crit"><span class="tick">02</span><span>With <code class="inl">dry_run=False</code>, the phone receives it in <strong>under 2 seconds</strong></span></div>
+            <div class="crit"><span class="tick">03</span><span>With a deliberately wrong token, it returns <code class="inl">False</code> and does not raise</span></div>
+          </div>
+        </div>
+        <div class="blk fail"><div class="lbl">If it fails</div>
+          <div class="fail-box"><dl>
+            <dt>getUpdates returns an empty result</dt>
+            <dd>You haven't messaged the bot yet, or you messaged a different bot. Send <code>/start</code> to your bot and retry.</dd>
+            <dt>401 Unauthorized</dt>
+            <dd>The token has a stray space or quote in <code>.env</code>. No quotes, no trailing whitespace.</dd>
+          </dl></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step" data-step="P6.2">
+      <header>
+        <label><input type="checkbox"></label>
+        <div class="hgroup"><span class="sid">P6.2</span><h4>Escalation ladder</h4></div>
+        <span class="tbox">40 min</span>
+      </header>
+      <div class="body">
+        <div class="blk goal"><div class="lbl">Goal</div>
+          <p>Rung 1 at t+0, rung 2 at t+60 s unless acknowledged — running in a background thread so
+          it never blocks detection.</p></div>
+        <div class="blk do"><div class="lbl">Do</div>
+          <p>On an <code class="inl">alert</code> event: send the rung-1 Telegram immediately with
+          room, local time and confidence; start a timer for
+          <code class="inl">escalate.rung2_delay_s</code>; if
+          <code class="inl">acknowledge(event_id)</code> is called first, cancel it. Twilio, if you
+          get to it, goes alongside rung 1.</p>
+          <div class="note warn"><span class="t">Twilio reality check</span>
+            <p>A Twilio trial can only call <strong>verified</strong> numbers and prepends a trial
+            message. Verify the target number today or leave <code class="inl">dry_run</code> on for
+            calls and demo Telegram only. Do not discover this on Friday.</p></div>
+        </div>
+        <div class="blk verify"><div class="lbl">Verify</div>
+          <div class="verify-box">
+            <div class="crit"><span class="tick">01</span><span>Rung 1 arrives at t+0; rung 2 arrives about 60 s later when not acknowledged</span></div>
+            <div class="crit"><span class="tick">02</span><span>Calling <code class="inl">acknowledge()</code> within the window stops rung 2</span></div>
+            <div class="crit"><span class="tick">03</span><span>The detection loop keeps processing during the 60 s wait — a second trigger is still handled</span></div>
+          </div>
+        </div>
+        <div class="blk fail"><div class="lbl">If it fails</div>
+          <div class="fail-box"><dl>
+            <dt>Criterion 03 fails — everything freezes for 60 s</dt>
+            <dd>You blocked the main loop with <code>sleep</code>. Use <code>threading.Timer</code>, and make it a daemon thread so Ctrl-C still exits.</dd>
+          </dl></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= P7 ================= -->
+  <section id="p7">
+    <div class="sechead"><span class="idx">P7</span><h2>Dashboard</h2></div>
+    <p class="lede">
+      Judges are six metres away. If they can't see the system thinking, the demo reads as a phone
+      buzzing for no visible reason.
+    </p>
+
+    <div class="step" data-step="P7.1">
+      <header>
+        <label><input type="checkbox"></label>
+        <div class="hgroup"><span class="sid">P7.1</span><h4>Live waveform and event log</h4></div>
+        <span class="tbox">90 min</span>
+      </header>
+      <div class="body">
+        <div class="blk goal"><div class="lbl">Goal</div>
+          <p>One page: scrolling vibration trace, the live trigger threshold, the current state, and
+          an event log.</p></div>
+        <div class="blk do"><div class="lbl">Do</div>
+          <p>Add a WebSocket at <code class="inl">/ws</code> to the FastAPI app that pushes, ten times
+          a second, a small JSON frame: <code class="inl">{"rms": float, "thr": float, "state": str}</code>
+          — plus a <code class="inl">{"event": {...}}</code> frame whenever a
+          <code class="inl">FallEvent</code> is emitted. Draw the trace on a
+          <code class="inl">&lt;canvas&gt;</code>; no charting library.</p>
+          <div class="note"><span class="t">Design for the back row</span>
+            <p>Big type. State as a coloured word, not an icon. Threshold as a horizontal line the
+            trace visibly crosses. Everything else is decoration and is out of scope.</p></div>
+        </div>
+        <div class="blk verify"><div class="lbl">Verify</div>
+          <div class="verify-box">
+            <div class="crit"><span class="tick">01</span><span>Page open, walking near the phone visibly moves the trace</span></div>
+            <div class="crit"><span class="tick">02</span><span>Dropping the bag makes the trace cross the threshold line and the state word change</span></div>
+            <div class="crit"><span class="tick">03</span><span>The event appears in the log with score, veto label and state</span></div>
+            <div class="crit"><span class="tick">04</span><span>Readable from <strong>five metres</strong> — walk back and check, don't assume</span></div>
+            <div class="crit"><span class="tick">05</span><span>Runs for <strong>10 minutes</strong> without the browser tab stalling or memory climbing</span></div>
+          </div>
+        </div>
+        <div class="blk fail"><div class="lbl">If it fails</div>
+          <div class="fail-box"><dl>
+            <dt>Tab slows down over minutes</dt>
+            <dd>You're keeping every frame. Cap the trace array at the visible width and cap the log at 50 rows.</dd>
+            <dt>WebSocket drops after a minute</dt>
+            <dd>Add a ping every 20 s and auto-reconnect on close. It <em>will</em> drop on venue Wi-Fi.</dd>
+          </dl></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= P8 ================= -->
+  <section id="p8">
+    <div class="sechead"><span class="idx">P8</span><h2>Tuning &amp; adversarial testing</h2></div>
+    <p class="lede">
+      Turn "it worked when I tried it" into a number you can defend when a judge pushes back.
+    </p>
+
+    <div class="step" data-step="P8.1">
+      <header>
+        <label><input type="checkbox"></label>
+        <div class="hgroup"><span class="sid">P8.1</span><h4>Run the negative set and publish the matrix</h4></div>
+        <span class="tbox">90 min</span>
+      </header>
+      <div class="body">
+        <div class="blk goal"><div class="lbl">Goal</div>
+          <p>A measured confusion matrix over every fixture, and thresholds chosen from it rather
+          than by feel.</p></div>
+        <div class="blk do"><div class="lbl">Do</div>
+          <p>Write <code class="inl">scripts/evaluate.py</code> that replays every
+          <code class="inl">data/*.csv</code> end to end through trigger → features → classifier →
+          veto → machine, and prints a matrix plus per-class breakdown. Then sweep
+          <code class="inl">classify.fall_threshold</code> from 0.3 to 0.8 in steps of 0.05 and pick
+          the value with the highest recall subject to zero false alarms on
+          <code>quiet</code> and <code>walk</code>.</p>
+        </div>
+        <div class="blk verify"><div class="lbl">Verify</div>
+          <div class="verify-box">
+            <div class="crit"><span class="tick">01</span><span><strong>Zero</strong> alerts across all <code>quiet_*</code> and <code>walk_*</code> fixtures</span></div>
+            <div class="crit"><span class="tick">02</span><span><strong>&ge; 90%</strong> of <code>fall_*</code> and <code>heeldrop_*</code> reach state <code class="inl">alert</code></span></div>
+            <div class="crit"><span class="tick">03</span><span><strong>&le; 20%</strong> of <code>rigid_*</code> and <code>door_*</code> reach <code class="inl">alert</code></span></div>
+            <div class="crit"><span class="tick">04</span><span>Chosen threshold written into <code class="inl">config.yaml</code> and committed</span></div>
+            <div class="crit"><span class="tick">05</span><span>Matrix saved to <code class="inl">docs/confusion.txt</code> and referenced in the README</span></div>
+          </div>
+        </div>
+        <div class="blk fail"><div class="lbl">If it fails</div>
+          <div class="fail-box"><dl>
+            <dt>Cannot satisfy 02 and 03 at the same time</dt>
+            <dd>Favour 02. Say plainly in the pitch: "we weight recall above precision, because a missed fall is a long lie and a false alarm is a phone call." Then show the number you actually got. That is a stronger answer than a suspiciously clean matrix.</dd>
+            <dt>Everything alerts</dt>
+            <dd>The veto isn't wired into the evaluation path, or <code>fall_threshold</code> is far too low. Print the score for one <code>rigid</code> file and check it's below threshold.</dd>
+          </dl></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= P9 ================= -->
+  <section id="p9">
+    <div class="sechead"><span class="idx">P9</span><h2>Repo &amp; README</h2></div>
+    <p class="lede">
+      Graded explicitly by the organisers, and the hard gate: <strong>9pm Thursday 3 September</strong>.
+      Budget real time for it — this is not paperwork at the end of the build, it is part of the build.
+    </p>
+
+    <div class="step" data-step="P9.1">
+      <header>
+        <label><input type="checkbox"></label>
+        <div class="hgroup"><span class="sid">P9.1</span><h4>Write the README the brief asks for</h4></div>
+        <span class="tbox">90 min</span>
+      </header>
+      <div class="body">
+        <div class="blk goal"><div class="lbl">Goal</div>
+          <p>A stranger clones the repo and has it running in fifteen minutes.</p></div>
+        <div class="blk do"><div class="lbl">Do</div>
+          <p>The email names two required parts. Cover both, in this order:</p>
+          <ol>
+            <li><strong>Overview</strong> — the problem, key features, how it stands out. Four short paragraphs, lifted and tightened from the proposal.</li>
+            <li><strong>Setup and run</strong> — prerequisites with versions, install, configuration, how to run, how to demo, how to run the tests.</li>
+          </ol>
+          <p>Then add, because they help you and cost little: architecture diagram (reuse
+          <code class="inl">fig-2-system-architecture.png</code>), the confusion matrix from P8,
+          a short honest <em>Limitations</em> section, and the team list.</p>
+          <div class="note"><span class="t">State the phone honestly</span>
+            <p>Put one line in Limitations: the MVP uses a phone accelerometer as a stand-in for the
+            bonded piezo node, so absolute sensitivity and range are not representative. Judges reward
+            that; they punish discovering it themselves.</p></div>
+        </div>
+        <div class="blk verify"><div class="lbl">Verify</div>
+          <div class="verify-box">
+            <div class="crit"><span class="tick">01</span><span><strong>The real test:</strong> a teammate who has never run the code clones it fresh and follows only the README. They reach a running dashboard without asking you anything.</span></div>
+            <div class="crit"><span class="tick">02</span><span>Every command in the README was copy-pasted and run, not written from memory</span></div>
+            <div class="crit"><span class="tick">03</span><span><code class="inl">git clone</code> into a clean directory, follow README, <code class="inl">pytest -q</code> passes</span></div>
+            <div class="crit"><span class="tick">04</span><span>No secrets in the repo: <code class="inl">git log -p | grep -iE "bot[0-9]{8}|AC[0-9a-f]{30}"</code> returns nothing</span></div>
+          </div>
+        </div>
+        <div class="blk fail"><div class="lbl">If it fails</div>
+          <div class="fail-box"><dl>
+            <dt>Teammate gets stuck</dt>
+            <dd>That's the README's bug, not theirs. Watch where they stop, fix that line, have them start over. This is the highest-value hour of Wednesday.</dd>
+            <dt>Criterion 04 finds a token</dt>
+            <dd>It's in git history, so rotating is mandatory: revoke the token with @BotFather, issue a new one, and only then clean history. Do not just delete the file.</dd>
+          </dl></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= P10 ================= -->
+  <section id="p10">
+    <div class="sechead"><span class="idx">P10</span><h2>Demo rehearsal</h2></div>
+    <p class="lede">
+      Ten minutes on stage, five of questions. The demo either works in the first ninety seconds or
+      it doesn't happen.
+    </p>
+
+    <div class="step" data-step="P10.1">
+      <header>
+        <label><input type="checkbox"></label>
+        <div class="hgroup"><span class="sid">P10.1</span><h4>Cold-start drill, five times</h4></div>
+        <span class="tbox">60 min</span>
+      </header>
+      <div class="body">
+        <div class="blk goal"><div class="lbl">Goal</div>
+          <p>From closed laptop to a delivered alert in under three minutes, repeatable, on someone
+          else's Wi-Fi.</p></div>
+        <div class="blk do"><div class="lbl">Do</div>
+          <p>Write <code class="inl">scripts/demo.sh</code> that starts the server, opens the
+          dashboard and prints the phone URL. Then run this drill five times, twice with a teammate
+          watching:</p>
+          <ol>
+            <li>Open laptop, join hotspot, run <code class="inl">./scripts/demo.sh</code></li>
+            <li>Phone on the floor, start streaming, wait for the trigger to warm up (~10 s)</li>
+            <li>Drop the bag. Alert arrives. Show the dashboard.</li>
+            <li>Repeat with the TV playing — show it <em>not</em> alerting on a dropped pan</li>
+          </ol>
+          <div class="note warn"><span class="t">Set the confirm window to 10 s for the stage</span>
+            <p>15 s of silence in front of judges is a long time; 60 s is unshowable. Set
+            <code class="inl">confirm.window_s: 10</code> for the demo and say the production value is
+            60. Being explicit about it is better than being asked.</p></div>
+        </div>
+        <div class="blk verify"><div class="lbl">Verify</div>
+          <div class="verify-box">
+            <div class="crit"><span class="tick">01</span><span>Five consecutive cold starts, <strong>five successful alerts</strong>. If one fails, fix and restart the count.</span></div>
+            <div class="crit"><span class="tick">02</span><span>Works on a phone hotspot with venue Wi-Fi off</span></div>
+            <div class="crit"><span class="tick">03</span><span>Works with the laptop <strong>fully offline</strong> except for Telegram</span></div>
+            <div class="crit"><span class="tick">04</span><span>A teammate who did not write the code can run the whole demo alone</span></div>
+            <div class="crit"><span class="tick">05</span><span>Recorded fallback video of a successful run exists on the laptop and on a phone</span></div>
+          </div>
+        </div>
+        <div class="blk fail"><div class="lbl">If it fails</div>
+          <div class="fail-box"><dl>
+            <dt>Any of the five fails</dt>
+            <dd>Do not explain it away. Find the cause and restart the count at zero. A demo that works four times in five will fail on stage — that is how it goes.</dd>
+            <dt>Criterion 05 not done</dt>
+            <dd>Do it before you sleep on Wednesday. The video is what you play if the network dies, and it takes ten minutes to record.</dd>
+          </dl></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= RISKS ================= -->
+  <section id="risks">
+    <div class="sechead"><span class="idx">A1</span><h2>Risk register</h2></div>
+    <p class="lede">Known ways this build dies, and the decision already made for each.</p>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Risk</th><th>Signal</th><th>Decision</th></tr></thead>
+        <tbody>
+          <tr><td>Phone accelerometer can't distinguish fall from dropped object</td><td>P1.3 criterion 03 fails</td><td>Ship on decay + low-frequency ratio anyway and report the real number. Do not fake it.</td></tr>
+          <tr><td>Venue Wi-Fi blocks device-to-device traffic</td><td>P1.1 no packets</td><td>Personal hotspot from a third phone. Test it Wednesday, not Friday.</td></tr>
+          <tr><td>TensorFlow won't install</td><td>P0.2 fails</td><td>Set <code>veto.enabled: false</code>, ship without the veto, keep the pitch claim as roadmap.</td></tr>
+          <tr><td>Twilio trial can't call the number</td><td>P6.2</td><td>Telegram only. The ladder still demonstrates; say the call is wired but unfunded.</td></tr>
+          <tr><td>Not enough training data</td><td>P3.3 recall &lt; 0.9</td><td>Ship <code>RuleClassifier</code>. It is explainable and defensible.</td></tr>
+          <tr><td>Demo fails on stage</td><td>—</td><td>Play the fallback video from P10.1 criterion 05, keep talking, move to Q&amp;A.</td></tr>
+          <tr><td>Junior blocked and nobody notices</td><td>No commits for 3 h</td><td>The 20-minute rule. Post the step ID and full output; move to an independent step.</td></tr>
+          <tr><td>6pm deck deadline missed while finishing the repo</td><td>Wednesday night with no slides</td><td>They are three hours apart on the same day. Assign the deck to someone who is not building, and send it even if the repo is still moving.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ================= TROUBLE ================= -->
+  <section id="trouble">
+    <div class="sechead"><span class="idx">A2</span><h2>Troubleshooting</h2></div>
+    <p class="lede">Check here before asking. Most of what goes wrong this week is on this list.</p>
+
+    <details>
+      <summary>ModuleNotFoundError: No module named 'opoyo'</summary>
+      <p>You're not in the repo root, or the venv isn't active. Every command runs from the directory
+      containing <code class="inl">config.yaml</code>, with <code class="inl">.venv</code> active.
+      Check with <code class="inl">pwd</code> and <code class="inl">which python</code>.</p>
+    </details>
+    <details>
+      <summary>The trigger fires constantly, even in silence</summary>
+      <p>Three usual causes, in order of likelihood: the high-pass filter state is being reset every
+      chunk (P2.1 test 2 catches this); the baseline hasn't collected 5 samples yet so the threshold
+      is <code class="inl">inf</code> and your <code class="inl">min_peak_mag</code> is doing all the
+      work; or the phone is on a wobbly surface. Print the threshold each second and watch it.</p>
+    </details>
+    <details>
+      <summary>Alerts arrive several seconds late</summary>
+      <p>You're extracting features on the whole 30 s buffer instead of a 2 s window, or YAMNet is
+      running on every chunk instead of only on triggers. The veto must run once per candidate event,
+      never continuously.</p>
+    </details>
+    <details>
+      <summary>Everything works on my machine but not the demo laptop</summary>
+      <p>Different mic device index, different sample rate support, or the TF Hub cache is missing.
+      Run <code class="inl">pytest -q</code> and the P4.1 offline check on the demo laptop specifically.
+      Decide on Tuesday which physical laptop is the demo machine and stop switching.</p>
+    </details>
+    <details>
+      <summary>Telegram works from curl but not from Python</summary>
+      <p><code class="inl">.env</code> isn't loaded, or the token has quotes around it. Print
+      <code class="inl">repr(secret("TELEGRAM_BOT_TOKEN"))</code> — you should see a bare string with
+      no quotes and no trailing newline.</p>
+    </details>
+    <details>
+      <summary>pytest passes but the live system behaves differently</summary>
+      <p>Almost always filter or trigger state that tests construct fresh and the live loop reuses.
+      Replay a fixture through the <em>live</em> code path with <code class="inl">scripts/replay.py</code>
+      rather than through the test doubles.</p>
+    </details>
+  </section>
+
+  </main>
+</div>
+</div>
+
+<footer>
+  <div class="wrap">
+    OPOYO MVP Runbook · Ellipsis Tech Series 2026 · Deck 6pm and repo 9pm on Thu 3 Sep;
+    pitch Fri 4 Sep, SOE Seminar Room B1-1. Progress is stored in this browser only.
+  </div>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------- theme toggle ---------- */
+  var root = document.documentElement;
+  var btn = document.getElementById("themebtn");
+  function store(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  function read(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+
+  var saved = read("opoyo.theme");
+  if (saved === "dark" || saved === "light") root.setAttribute("data-theme", saved);
+
+  btn.addEventListener("click", function () {
+    var cur = root.getAttribute("data-theme");
+    if (!cur) {
+      cur = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+    var next = cur === "dark" ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    store("opoyo.theme", next);
+  });
+
+  /* ---------- step progress ---------- */
+  var steps = Array.prototype.slice.call(document.querySelectorAll(".step[data-step]"));
+  var bar = document.getElementById("pbar");
+  var count = document.getElementById("pcount");
+  var pct = document.getElementById("ppct");
+
+  function refresh() {
+    var done = steps.filter(function (s) { return s.classList.contains("done"); }).length;
+    var total = steps.length;
+    var p = total ? Math.round((done / total) * 100) : 0;
+    bar.style.width = p + "%";
+    count.textContent = done + " / " + total + " steps";
+    pct.textContent = p + "%";
+  }
+
+  steps.forEach(function (step) {
+    var id = step.getAttribute("data-step");
+    var box = step.querySelector('input[type="checkbox"]');
+    if (!box) return;
+    box.setAttribute("aria-label", "Mark step " + id + " complete");
+
+    if (read("opoyo.step." + id) === "1") {
+      box.checked = true;
+      step.classList.add("done");
+    }
+    box.addEventListener("change", function () {
+      step.classList.toggle("done", box.checked);
+      store("opoyo.step." + id, box.checked ? "1" : "0");
+      refresh();
+    });
+  });
+
+  refresh();
+})();
+</script>
+
+</body>
+</html>

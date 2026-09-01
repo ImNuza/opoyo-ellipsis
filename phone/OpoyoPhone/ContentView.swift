@@ -5,6 +5,7 @@ struct ContentView: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var session = SensorSession()
     @State private var portText = ""
+    @State private var keepAwake = false
 
     private var cloth: Cloth { .make(colorScheme) }
     private var hostIsEmpty: Bool {
@@ -18,7 +19,7 @@ struct ContentView: View {
             VStack(spacing: 0) {
                 headerBar
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 24) {
+                    VStack(alignment: .leading, spacing: 20) {
                         liveReadout
                         axes
                         destination
@@ -27,7 +28,7 @@ struct ContentView: View {
                     }
                     .padding(.horizontal, 20)
                     .padding(.top, 16)
-                    .padding(.bottom, 32)
+                    .padding(.bottom, 40)
                 }
                 .scrollDismissesKeyboard(.interactively)
             }
@@ -35,34 +36,49 @@ struct ContentView: View {
         .tint(cloth.indigo)
         .onAppear {
             portText = String(session.port)
+            applyIdleTimer()
+        }
+        .onChange(of: session.isRunning) { _, _ in
+            applyIdleTimer()
+        }
+        .onChange(of: keepAwake) { _, _ in
+            applyIdleTimer()
+        }
+        .onDisappear {
+            if !session.isRunning && !keepAwake {
+                UIApplication.shared.isIdleTimerDisabled = false
+            }
         }
     }
 
     private var headerBar: some View {
         ZStack {
-            cloth.header
-            KawungCloth(stroke: cloth.kawung)
-            HStack(alignment: .center, spacing: 12) {
+            Image("BatikHeader")
+                .resizable()
+                .scaledToFill()
+                .overlay(cloth.header.opacity(0.72))
+            HStack(alignment: .center, spacing: 10) {
                 LogoMark()
-                    .frame(width: 44, height: 32)
-                VStack(alignment: .leading, spacing: 2) {
+                    .frame(width: 36, height: 26)
+                VStack(alignment: .leading, spacing: 1) {
                     Text("OPOYO")
-                        .font(Typeface.display(22))
-                        .tracking(3.2)
+                        .font(Typeface.display(18))
+                        .tracking(2.4)
                         .foregroundStyle(cloth.onHeader)
                     Text("Observe · Predict · On Your Own")
-                        .font(Typeface.body(11))
+                        .font(Typeface.body(10))
                         .foregroundStyle(cloth.tan)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.7)
+                        .minimumScaleFactor(0.6)
                 }
                 Spacer(minLength: 8)
                 statusChip
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 12)
         }
-        .frame(minHeight: 72)
+        .frame(maxWidth: .infinity)
+        .frame(height: 56)
+        .clipped()
     }
 
     private var statusChip: some View {
@@ -115,7 +131,7 @@ struct ContentView: View {
                 .textCase(.uppercase)
                 .foregroundStyle(cloth.muted)
             Text(value)
-                .font(Typeface.number(56))
+                .font(Typeface.number(40))
                 .foregroundStyle(cloth.ink)
                 .lineLimit(1)
                 .minimumScaleFactor(0.45)
@@ -124,8 +140,8 @@ struct ContentView: View {
                 .font(Typeface.bodyMedium(13))
                 .foregroundStyle(cloth.muted)
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, minHeight: 148, alignment: .topLeading)
+        .padding(14)
+        .frame(maxWidth: .infinity, minHeight: 112, alignment: .topLeading)
         .background(cloth.resist)
         .overlay(
             RoundedRectangle(cornerRadius: 2, style: .continuous)
@@ -255,6 +271,23 @@ struct ContentView: View {
                     : "Starts accelerometer and microphone streaming"
             )
 
+            Button(action: {
+                keepAwake.toggle()
+                applyIdleTimer()
+            }) {
+                Text(keepAwake ? "Screen stays on" : "Keep screen awake")
+                    .font(Typeface.bodyDemi(16))
+                    .frame(maxWidth: .infinity, minHeight: 48)
+                    .foregroundStyle(cloth.indigo)
+                    .background(cloth.resist)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 2, style: .continuous)
+                            .stroke(keepAwake || session.isRunning ? cloth.indigo : cloth.line, lineWidth: 1)
+                    )
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Keeps the screen on after Stop. Streaming already keeps it on.")
+
             Text(session.status)
                 .font(Typeface.body(14))
                 .foregroundStyle(session.isRunning ? cloth.indigo : cloth.muted)
@@ -263,7 +296,7 @@ struct ContentView: View {
     }
 
     private var footnote: some View {
-        Text("Place the phone face-down on tile. Same Wi-Fi or personal hotspot as the Mac. Allow microphone and local network when iOS asks. Name is assigned on the Mac.")
+        Text("Place the phone face-down on tile. Same Wi-Fi or personal hotspot as the Mac. Screen stays on while streaming. Allow microphone and local network when iOS asks. Name is assigned on the Mac.")
             .font(Typeface.body(13))
             .foregroundStyle(cloth.muted)
             .fixedSize(horizontal: false, vertical: true)
@@ -275,5 +308,10 @@ struct ContentView: View {
         } else {
             session.start()
         }
+        applyIdleTimer()
+    }
+
+    private func applyIdleTimer() {
+        UIApplication.shared.isIdleTimerDisabled = session.isRunning || keepAwake
     }
 }
