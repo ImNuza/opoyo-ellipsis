@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-import os
 from datetime import datetime
 from pathlib import Path
+
+from shared.env import require_env
 
 
 def load_env() -> None:
@@ -14,19 +15,24 @@ def load_env() -> None:
     load_dotenv(path)
 
 
-def chat_id() -> str | None:
-    target = (os.getenv("TELEGRAM_TARGET") or "personal").strip().lower()
+def chat_id() -> str:
+    target = require_env("TELEGRAM_TARGET").lower()
     if target == "family":
-        raw = os.getenv("TELEGRAM_CHAT_ID_FAMILY") or ""
-    else:
-        raw = os.getenv("TELEGRAM_CHAT_ID") or ""
-    cleaned = raw.strip()
-    return cleaned or None
+        return require_env("TELEGRAM_CHAT_ID_FAMILY")
+    if target == "personal":
+        return require_env("TELEGRAM_CHAT_ID")
+    raise RuntimeError(
+        f"invalid TELEGRAM_TARGET: {target!r} (expected 'personal' or 'family')"
+    )
 
 
-def token() -> str | None:
-    raw = (os.getenv("TELEGRAM_BOT_API") or os.getenv("TELEGRAM_BOT_TOKEN") or "").strip()
-    return raw or None
+def token() -> str:
+    return require_env("TELEGRAM_BOT_TOKEN")
+
+
+def require_live() -> None:
+    token()
+    chat_id()
 
 
 def message_suspect(name: str) -> str:
@@ -47,8 +53,6 @@ def message_fall(room: str, timestamp_ms: int, confidence: float) -> str:
 def send_sync(text: str) -> bool:
     tok = token()
     cid = chat_id()
-    if not tok or not cid:
-        return False
     import httpx
 
     url = f"https://api.telegram.org/bot{tok}/sendMessage"
@@ -62,8 +66,6 @@ def send_sync(text: str) -> bool:
 async def send(text: str) -> bool:
     tok = token()
     cid = chat_id()
-    if not tok or not cid:
-        return False
     import httpx
 
     url = f"https://api.telegram.org/bot{tok}/sendMessage"

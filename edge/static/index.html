@@ -456,7 +456,7 @@
         <h2>Identity</h2>
         <p>A phone is not identified by MAC address. iOS will not give that to the app. The stable key is a UUID stored on the phone. The card also shows the model and a four-character short id. Rename on the dashboard is stored on the Mac against that UUID, so quit and rejoin keep the name.</p>
         <h2>Edge inference (this process, not the browser)</h2>
-        <p>UDP packets land here. A 2 s window of magnitude is passed to a 1D CNN stub in <code>edge/infer.py</code>. The stub returns <code>timestamp, is_fall, confidence</code>. Every result is logged. The cloud is contacted only when <code>is_fall</code> and confidence ≥ <code>EDGE_ESCALATE_MIN_CONFIDENCE</code> (default 0.90).</p>
+        <p>UDP packets land here. A 2 s window of magnitude is passed to a 1D CNN stub in <code>edge/infer.py</code>. The stub returns <code>timestamp, is_fall, confidence</code>. Every result is logged. The cloud is contacted only when <code>is_fall</code> and confidence ≥ <code>EDGE_ESCALATE_MIN_CONFIDENCE</code> (required in <code>.env</code>).</p>
         <p><code>InferenceResult</code>: <code>inference_id, timestamp, node_id, room, is_fall, confidence</code></p>
         <p><code>FallEvent</code> (cloud only): same fields plus <code>threshold</code>, and <code>is_fall</code> is always true.</p>
         <h2>Telegram</h2>

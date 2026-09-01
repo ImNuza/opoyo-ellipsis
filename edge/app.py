@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import json
-import os
 import time
+import os
 from collections import deque
 from pathlib import Path
 from typing import Any
@@ -14,7 +14,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ValidationError
 
-from edge.gate import EscalationGate, HttpCloudClient, RecordingCloudClient
+from edge.gate import EscalationGate, HttpCloudClient
 from edge.infer import Classifier, StubCnn
 from edge.log import InferenceLog
 from edge.window import WindowBuilder
@@ -51,20 +51,10 @@ def _node_id(packet: dict[str, Any], addr: tuple[str, int]) -> str:
     return addr[0]
 
 
-def _env_float(name: str, default: float) -> float:
-    raw = os.getenv(name)
-    if raw is None or not str(raw).strip():
-        return default
-    try:
-        return float(raw)
-    except ValueError:
-        return default
-
-
 def default_edge_config() -> EdgeConfig:
     return EdgeConfig(
-        escalate_min_confidence=_env_float("EDGE_ESCALATE_MIN_CONFIDENCE", 0.90),
-        cloud_url=os.getenv("EDGE_CLOUD_URL") or "http://127.0.0.1:8001",
+        escalate_min_confidence=os.environ.get("EDGE_ESCALATE_MIN_CONFIDENCE"),
+        cloud_url=os.environ.get("EDGE_CLOUD_URL"),
     )
 
 
@@ -390,11 +380,7 @@ def create_app(
         gate=gate,
         store=store,
     )
-    udp_on = (
-        enable_udp
-        if enable_udp is not None
-        else os.getenv("EDGE_ENABLE_UDP", "1") != "0"
-    )
+    udp_on = os.environ.get("EDGE_ENABLE_UDP") if enable_udp is None else enable_udp
 
     app = FastAPI(title="OPOYO edge")
     app.state.hub = hub
@@ -473,4 +459,7 @@ def create_app(
     return app
 
 
-app = create_app()
+def __getattr__(name: str) -> FastAPI:
+    if name == "app":
+        return create_app()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

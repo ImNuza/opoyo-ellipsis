@@ -24,7 +24,11 @@ def build_tree() -> EscalationTree:
 
 def create_app(tree: EscalationTree | None = None) -> FastAPI:
     notify.load_env()
-    escalation = tree or build_tree()
+    if tree is None:
+        notify.require_live()
+        escalation = build_tree()
+    else:
+        escalation = tree
     app = FastAPI(title="OPOYO cloud")
     app.state.tree = escalation
 
@@ -64,4 +68,7 @@ def create_app(tree: EscalationTree | None = None) -> FastAPI:
     return app
 
 
-app = create_app()
+def __getattr__(name: str) -> FastAPI:
+    if name == "app":
+        return create_app()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

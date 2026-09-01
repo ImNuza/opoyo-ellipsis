@@ -5,10 +5,6 @@ from typing import Protocol
 from shared.schemas import FallEvent, InferenceResult, fall_event_from_inference
 
 
-def should_escalate(result: InferenceResult, threshold: float) -> bool:
-    return bool(result.is_fall) and result.confidence >= threshold
-
-
 class CloudClient(Protocol):
     def post(self, event: FallEvent) -> None: ...
 
@@ -53,8 +49,10 @@ class EscalationGate:
         append = getattr(self.store, "append", None)
         if callable(append):
             append(result)
-        if not should_escalate(result, self.threshold):
-            return None
-        event = fall_event_from_inference(result, self.threshold)
-        self.client.post(event)
-        return event
+        # Check if the result should be escalated based on the threshold
+        if bool(result.is_fall) and result.confidence >= self.threshold:
+            event = fall_event_from_inference(result, self.threshold)
+            self.client.post(event)
+            return event
+        return None
+    

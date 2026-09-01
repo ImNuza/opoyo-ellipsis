@@ -8,7 +8,14 @@ from edge.app import create_app as create_edge
 from server.adapters import RecordingAdapter
 from server.app import create_app as create_cloud
 from server.tree import EscalationTree, FakeClock
-from shared.schemas import AckEvent, FallEvent
+from shared.schemas import AckEvent, EdgeConfig, FallEvent
+
+
+def _edge_cfg() -> EdgeConfig:
+    return EdgeConfig(
+        escalate_min_confidence=0.9,
+        cloud_url="http://127.0.0.1:8001",
+    )
 
 
 def _fall() -> dict:
@@ -63,7 +70,11 @@ def test_cloud_ack_moves_state():
 
 
 def test_edge_config_roundtrip(tmp_path: Path):
-    app = create_edge(enable_udp=False, log_path=tmp_path / "inference.jsonl")
+    app = create_edge(
+        enable_udp=False,
+        log_path=tmp_path / "inference.jsonl",
+        cfg=_edge_cfg(),
+    )
     with TestClient(app) as client:
         response = client.post(
             "/api/edge/config",
@@ -74,7 +85,7 @@ def test_edge_config_roundtrip(tmp_path: Path):
 
 
 def test_edge_has_no_raw_sample_cloud_dump():
-    app = create_edge(enable_udp=False)
+    app = create_edge(enable_udp=False, cfg=_edge_cfg())
     paths = {getattr(route, "path", "") for route in app.routes}
     forbidden = [p for p in paths if "sample" in p.lower() and "cloud" in p.lower()]
     assert forbidden == []
