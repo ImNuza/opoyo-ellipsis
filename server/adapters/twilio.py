@@ -1,7 +1,7 @@
-"""Twilio transport.
+"""Twilio transport (not on the live ladder).
 
-The live Voice API is not wired yet. ``send`` keeps the same signature as
-Telegram so the decision tree can treat both adapters the same.
+Kept so a voice/SMS path can plug in later with the same ``Sender`` signature
+as Telegram. ``DecisionTree`` currently messages the senior over Telegram.
 """
 
 from __future__ import annotations

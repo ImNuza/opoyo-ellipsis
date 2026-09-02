@@ -67,8 +67,8 @@ class FallEvent(BaseModel):
 
 
 AckActor = Literal["senior", "family", "secondary", "careline"]
-AckOutcome = Literal["fine", "not_fine", "no_answer", "taken"]
-EscalationRung = Literal["family_telegram", "senior_call", "secondary", "careline"]
+AckOutcome = Literal["yes", "fine", "not_fine", "no_answer", "taken"]
+EscalationRung = Literal["family_telegram", "senior_telegram", "secondary", "careline"]
 CaseState = Literal[
     "rung1_dispatched",
     "false_alarm_closed",

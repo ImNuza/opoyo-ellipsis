@@ -1,4 +1,8 @@
-"""Figure A5 escalation: family Telegram, senior call, secondary, CareLine."""
+"""Figure A5 escalation: Telegram family + senior, then secondary, CareLine.
+
+Twilio is not on this ladder. The adapter in ``server.adapters.twilio`` stays
+as a plug-in point for a future voice path.
+"""
 
 from __future__ import annotations
 
@@ -56,24 +60,37 @@ def fall_message(event: FallEvent) -> str:
     )
 
 
+def senior_check_message(event: FallEvent) -> str:
+    """Ask the senior over Telegram whether they are okay.
+
+    A ``yes`` ack closes the case as all-clear.
+    """
+    ts = datetime.fromtimestamp(event.timestamp / 1000.0).strftime(
+        "%Y-%m-%d %H:%M:%S"
+    )
+    return (
+        f"OPOYO: possible fall. Room {event.room}. {ts}. "
+        f"Are you okay? Reply yes if everything is fine. "
+        f"confidence {event.confidence:.2f}."
+    )
+
+
 class DecisionTree:
-    """Timed escalation: next of kin, senior call, secondary, CareLine."""
+    """Timed escalation: next of kin + senior over Telegram, then secondary."""
 
     def __init__(
         self,
         clock: Clock,
         telegram: Sender,
-        twilio: Sender,
         next_of_kin_chat_id: str,
         secondary_chat_id: str,
-        senior_phone: str,
+        senior_chat_id: str,
     ) -> None:
         self._clock = clock
         self._telegram = telegram
-        self._twilio = twilio
         self._next_of_kin_chat_id = next_of_kin_chat_id
         self._secondary_chat_id = secondary_chat_id
-        self._senior_phone = senior_phone
+        self._senior_chat_id = senior_chat_id
         self.cases: dict[str, EscalationCase] = {}
         self._by_event: dict[str, str] = {}
 
@@ -98,22 +115,21 @@ class DecisionTree:
         )
         self.cases[case.case_id] = case
         self._by_event[event.event_id] = case.case_id
-        text = fall_message(event)
         self._dispatch(
             case,
             rung="family_telegram",
             at_s=0,
             sender=self._telegram,
             destination=self._next_of_kin_chat_id,
-            message=text,
+            message=fall_message(event),
         )
         self._dispatch(
             case,
-            rung="senior_call",
+            rung="senior_telegram",
             at_s=0,
-            sender=self._twilio,
-            destination=self._senior_phone,
-            message=text,
+            sender=self._telegram,
+            destination=self._senior_chat_id,
+            message=senior_check_message(event),
         )
         return case
 
@@ -132,7 +148,7 @@ class DecisionTree:
         if case.state in TERMINAL:
             return case
         case.acks.append(ack)
-        if ack.actor == "senior" and ack.outcome == "fine":
+        if ack.actor == "senior" and ack.outcome in {"yes", "fine"}:
             case.state = "false_alarm_closed"
         elif ack.actor == "senior" and ack.outcome in {"no_answer", "not_fine"}:
             if case.state == "rung1_dispatched":

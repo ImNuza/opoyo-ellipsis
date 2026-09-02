@@ -12,13 +12,12 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
 from server.adapters.telegram import Telegram
-from server.adapters.twilio import Twilio
 from server.decision_tree import DecisionTree, SystemClock
 from shared.schemas import AckEvent, FallEvent
 
 
 def load_cloud_env() -> dict[str, str]:
-    """Load ``.env`` once and require Telegram + senior-phone settings.
+    """Load ``.env`` once for Telegram chat ids.
 
     Returns:
         Token and destination map used to construct the live tree.
@@ -28,7 +27,7 @@ def load_cloud_env() -> dict[str, str]:
         "telegram_bot_token": os.environ.get("TELEGRAM_BOT_TOKEN"),
         "next_of_kin_chat_id": os.environ.get("TELEGRAM_CHAT_ID_NEXT_OF_KIN"),
         "secondary_chat_id": os.environ.get("TELEGRAM_CHAT_ID_SECONDARY"),
-        "senior_phone": os.environ.get("SENIOR_PHONE"),
+        "senior_chat_id": os.environ.get("TELEGRAM_CHAT_ID_SENIOR"),
     }
 
 
@@ -38,10 +37,9 @@ def build_tree() -> DecisionTree:
     return DecisionTree(
         clock=SystemClock(),
         telegram=Telegram(cfg["telegram_bot_token"]),
-        twilio=Twilio(),
         next_of_kin_chat_id=cfg["next_of_kin_chat_id"],
         secondary_chat_id=cfg["secondary_chat_id"],
-        senior_phone=cfg["senior_phone"],
+        senior_chat_id=cfg["senior_chat_id"],
     )
 
 

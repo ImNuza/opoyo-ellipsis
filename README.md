@@ -9,7 +9,7 @@ phone (UDP JSON :9000)  →  edge (:8000 HTTP + :9000 UDP)  →  cloud (:8001 HT
                                  │                              │
                                  │  FallEvent POST /events      │
                                  │  only if is_fall and         │  Telegram next of kin
-                                 │  confidence ≥ 0.90           │  + stub senior call
+                                 │  confidence ≥ 0.90           │  + Telegram senior (yes = ok)
                                  ▼                              ▼
                           edge/data/inference.jsonl        DecisionTree
 ```
@@ -23,7 +23,7 @@ Swap `StubCnn` for a trained 1D CNN with the same `infer(window) -> InferenceRes
 1. **Phone → edge.** One JSON object per sample, 50 Hz, UDP to `0.0.0.0:9000`. No HTTP. No TCP handshake. The packet is a `SensorSample` (`v, id, model, t, ax, ay, az, mag, db`). `id` is a UUID created on first launch (or by `fake_phone.py`).
 2. **Edge internally.** UDP datagrams become `Node`s (max 5). Each node has a `WindowBuilder` (2 s window, 1 s hop, 50 Hz → 100 samples). `StubCnn.infer` returns an `InferenceResult`. Every result is appended to `edge/data/inference.jsonl`. Combined dashboard traces are **max mag** and **max dB** among phones seen in the last 2.5 s.
 3. **Edge → cloud.** Only when `is_fall` is true **and** `confidence >= 0.90`. The edge POSTs a `FallEvent` to `{CLOUD_URL}/events` (`http://127.0.0.1:8001/events`). Axes and raw windows stay on the edge.
-4. **Cloud → humans.** `DecisionTree.ingest` opens a case: Telegram next of kin + stub Twilio senior call at t+0. Acks on `POST /cases/{id}/ack` move the ladder. A 0.5 s tick loop fires secondary (t+60) and CareLine stub (t+180).
+4. **Cloud → humans.** `DecisionTree.ingest` opens a case: Telegram next of kin and Telegram to the senior at t+0. If the senior acks `yes`, the case closes as all-clear. Otherwise `POST /cases/{id}/ack` moves the ladder. A 0.5 s tick loop fires secondary (t+60) and CareLine stub (t+180). Twilio is not on this path; `server.adapters.twilio` is kept for a future voice plug-in.
 5. **Dashboard → edge.** Browser uses `GET /api/state` and WebSocket `/ws`. It does not ingest samples.
 
 If the edge log does not print `[edge] UDP listening on 0.0.0.0:9000`, phones are sending into the void. Set `EDGE_ENABLE_UDP=1` in `.env` and restart.
@@ -199,22 +199,23 @@ FastAPI process. Default `http://127.0.0.1:8001`. No UDP. No dashboard.
 
 **In:** `FallEvent` and `AckEvent` JSON.
 
-**Out:** `EscalationCase` JSON; Telegram `sendMessage`; stub Twilio `send`.
+**Out:** `EscalationCase` JSON; Telegram `sendMessage` to family, senior, and secondary. Twilio adapter exists but is unused.
 
 ### Endpoints
 
 | Method | Path | Input | Output |
 |---|---|---|---|
-| `POST` | `/events` | `FallEvent` | `EscalationCase`, **202**. Dedupes on `event_id`. t+0: Telegram next of kin + stub senior call |
-| `POST` | `/cases/{case_id}/ack` | `AckEvent` (`case_id` in the path wins if it disagrees with the body) | Updated case, or **404** |
+| `POST` | `/events` | `FallEvent` | `EscalationCase`, **202**. Dedupes on `event_id`. t+0: Telegram next of kin + Telegram senior check-in |
+| `POST` | `/cases/{case_id}/ack` | `AckEvent` (`case_id` in the path wins if it disagrees with the body). Senior `yes` closes as all-clear. | Updated case, or **404** |
 | `GET` | `/cases/{case_id}` | — | Current case, or **404** |
 | `GET` | `/health` | — | `{"ok": true}` |
 
 Startup starts a 0.5 s `on_tick` loop (not an HTTP route): after senior `no_answer` / `not_fine`, wait 60 s then Telegram secondary; CareLine stub at t+180.
 
-Telegram copy: `OPOYO: fall. Room {room}. {local time}. confidence {0.00}.`
+Family Telegram copy: `OPOYO: fall. Room {room}. {local time}. confidence {0.00}.`  
+Senior Telegram copy asks them to reply **yes** if they are fine.
 
-`.env` for a live tree: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID_NEXT_OF_KIN`, `TELEGRAM_CHAT_ID_SECONDARY`, `SENIOR_PHONE`.
+`.env` for a live tree: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID_NEXT_OF_KIN`, `TELEGRAM_CHAT_ID_SECONDARY`, `TELEGRAM_CHAT_ID_SENIOR`.
 
 ---
 

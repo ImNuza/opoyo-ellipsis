@@ -18,7 +18,7 @@ PHONE_A = "11111111-1111-1111-1111-111111111111"
 PHONE_B = "22222222-2222-2222-2222-222222222222"
 KIN = "kin-chat"
 SECONDARY = "sec-chat"
-SENIOR = "+6500000000"
+SENIOR = "senior-chat"
 SAMPLES = 120
 
 
@@ -89,14 +89,12 @@ def test_fake_phone_over_threshold_triggers_telegram(tmp_path: Path):
     assert event.node_id == "Phone 1"
 
     telegram = FakeSender()
-    twilio = FakeSender()
     tree = DecisionTree(
         clock=FakeClock(),
         telegram=telegram,
-        twilio=twilio,
         next_of_kin_chat_id=KIN,
         secondary_chat_id=SECONDARY,
-        senior_phone=SENIOR,
+        senior_chat_id=SENIOR,
     )
     with TestClient(create_cloud(tree=tree)) as client:
         response = client.post("/events", json=event.model_dump())
@@ -104,10 +102,10 @@ def test_fake_phone_over_threshold_triggers_telegram(tmp_path: Path):
     body = response.json()
     assert body["state"] == "rung1_dispatched"
 
-    assert len(telegram.sent) == 1
-    dest, text = telegram.sent[0]
-    assert dest == KIN
-    assert "OPOYO: fall" in text
-    assert "Room 1" in text
-    assert "0.95" in text
-    assert twilio.sent == [(SENIOR, text)]
+    assert [dest for dest, _text in telegram.sent] == [KIN, SENIOR]
+    family_text = telegram.sent[0][1]
+    senior_text = telegram.sent[1][1]
+    assert "OPOYO: fall" in family_text
+    assert "Room 1" in family_text
+    assert "0.95" in family_text
+    assert "Reply yes" in senior_text

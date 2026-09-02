@@ -394,10 +394,10 @@
         <p><code>InferenceResult</code>: <code>inference_id, timestamp, node_id</code> (<code>Phone 1</code> … <code>Phone 5</code>), <code>room</code> (1–5), <code>is_fall, confidence</code></p>
         <p><code>FallEvent</code> (cloud only): same fields plus <code>threshold</code>, and <code>is_fall</code> is always true.</p>
         <h2>Telegram</h2>
-        <p>The cloud process owns the escalation ladder. Telegram is rung 1 at t+0 after a gated fall. Twilio, secondary contact, and CareLine are stubs.</p>
+        <p>The cloud process owns the escalation ladder. At t+0 after a gated fall it Telegrams next of kin and the senior. Twilio is not on the live path; the adapter remains for a future voice plug-in.</p>
         <ul>
-          <li>t+0: Telegram next of kin (<code>TELEGRAM_CHAT_ID_NEXT_OF_KIN</code>) with room, timestamp, confidence; Twilio stub call to <code>SENIOR_PHONE</code>.</li>
-          <li>Senior “fine” closes the case. Otherwise wait 60 s, then Telegram secondary (<code>TELEGRAM_CHAT_ID_SECONDARY</code>), then CareLine at t+180.</li>
+          <li>t+0: Telegram next of kin (<code>TELEGRAM_CHAT_ID_NEXT_OF_KIN</code>) and Telegram senior (<code>TELEGRAM_CHAT_ID_SENIOR</code>) asking them to reply yes if they are okay.</li>
+          <li>Senior “yes” closes the case as all-clear. Otherwise wait 60 s, then Telegram secondary (<code>TELEGRAM_CHAT_ID_SECONDARY</code>), then CareLine at t+180.</li>
         </ul>
         <h2>Phone keep-awake</h2>
         <p>iOS will not stream CoreMotion or mic in the background. Streaming turns the idle timer off. A Keep screen awake toggle keeps it off after Stop. That is the Friday path: face-down, screen on.</p>
@@ -416,7 +416,8 @@
         <ul>
           <li>Trained 1D-CNN weights behind the same <code>infer(window)</code> signature.</li>
           <li>YAMNet acoustic veto.</li>
-          <li>Live Twilio and CareLine adapters.</li>
+          <li>Wire Twilio voice using the existing <code>server.adapters.twilio</code> Sender.</li>
+          <li>Live CareLine adapter.</li>
           <li>True background streaming. iOS will not do that honestly.</li>
           <li>Piezo puck hardware.</li>
         </ul>

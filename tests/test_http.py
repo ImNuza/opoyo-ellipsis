@@ -26,10 +26,9 @@ def _cloud_tree() -> DecisionTree:
     return DecisionTree(
         clock=FakeClock(),
         telegram=FakeSender(),
-        twilio=FakeSender(),
         next_of_kin_chat_id="kin",
         secondary_chat_id="sec",
-        senior_phone="+6500000000",
+        senior_chat_id="senior",
     )
 
 
@@ -49,7 +48,7 @@ def test_cloud_ack_moves_state():
         ack = AckEvent(
             case_id=case_id,
             actor="senior",
-            outcome="fine",
+            outcome="yes",
             timestamp=1,
         )
         response = client.post(f"/cases/{case_id}/ack", json=ack.model_dump())

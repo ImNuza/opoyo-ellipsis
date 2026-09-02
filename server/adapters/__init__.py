@@ -1,7 +1,9 @@
 """Outbound message transports.
 
 Adapters know how to deliver a string to a destination. They do not choose
-recipients or compose alert copy.
+recipients or compose alert copy. The live decision tree uses Telegram.
+Twilio stays here so a voice/SMS path can plug in later without changing
+the Sender protocol.
 """
 
 from typing import Protocol
