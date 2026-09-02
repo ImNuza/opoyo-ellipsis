@@ -279,6 +279,10 @@ struct ContentView: View {
                     session.port = parsed
                 }
             }
+
+            Text("JSON \(session.port) · PCM \(Int(session.port) + 1)")
+                .font(Typeface.bodyMedium(11))
+                .foregroundStyle(cloth.muted)
         }
     }
 

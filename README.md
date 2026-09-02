@@ -20,13 +20,14 @@ Swap `StubCnn` for a trained 1D CNN with the same `infer(window) -> InferenceRes
 
 ## How they communicate
 
-1. **Phone → edge.** One JSON object per sample, 50 Hz, UDP to `0.0.0.0:9000`. No HTTP. No TCP handshake. The packet is a `SensorSample` (`v, id, model, t, ax, ay, az, mag, db`). `id` is a UUID created on first launch (or by `fake_phone.py`).
-2. **Edge internally.** UDP datagrams become `Node`s (max 5). Each node has a `WindowBuilder` (2 s window, 1 s hop, 50 Hz → 100 samples). `StubCnn.infer` returns an `InferenceResult`. Every result is appended to `edge/data/inference.jsonl`. Combined dashboard traces are **max mag** and **max dB** among phones seen in the last 2.5 s.
-3. **Edge → cloud.** Only when `is_fall` is true **and** `confidence >= 0.90`. The edge POSTs a `FallEvent` to `{CLOUD_URL}/events` (`http://127.0.0.1:8001/events`). Axes and raw windows stay on the edge.
-4. **Cloud → humans.** `DecisionTree.ingest` opens a case: Telegram next of kin and Telegram to the senior at t+0. If the senior acks `yes`, the case closes as all-clear. Otherwise `POST /cases/{id}/ack` moves the ladder. A 0.5 s tick loop fires secondary (t+60) and CareLine stub (t+180). Twilio is not on this path; `server.adapters.twilio` is kept for a future voice plug-in.
-5. **Dashboard → edge.** Browser uses `GET /api/state` and WebSocket `/ws`. It does not ingest samples.
+1. **Phone → edge (JSON).** One JSON object per sample, 50 Hz, UDP to `0.0.0.0:9000`. No HTTP. No TCP handshake. The packet is a `SensorSample` (`v, id, model, t, ax, ay, az, mag, db`). `id` is a UUID created on first launch (or by `fake_phone.py`).
+2. **Phone → edge (PCM).** 16 kHz mono int16 frames on UDP **`:9001`** (JSON port + 1). Binary `OPYA` header + PCM — not a WAV file. Same `id` and phone unix `t_ms` as JSON. iOS resamples the mic tap to 16 kHz before send. `fake_phone.py` sends a synthetic 20 ms frame per mag tick (`--no-pcm` to skip).
+3. **Edge internally.** JSON datagrams become `Node`s (max 5). Each node has a `WindowBuilder` (2 s window, 1 s hop, 50 Hz → 100 samples). PCM is stored in a 4 s `PcmRing` keyed by UUID. When a window closes, the hub slices PCM with `t_start_ms` / `t_end_ms` (fail-open if the clip is missing). `StubCnn.infer` still sees only the kinematic window. Combined dashboard traces are **max mag** and **max dB** among phones seen in the last 2.5 s. Ticks may include `pcm_coverage` / `pcm_buffered_ms`; the waveform is not sent to the browser or the cloud.
+4. **Edge → cloud.** Only when `is_fall` is true **and** `confidence >= 0.90`. The edge POSTs a `FallEvent` to `{CLOUD_URL}/events` (`http://127.0.0.1:8001/events`). Axes, windows, and raw PCM stay on the edge.
+5. **Cloud → humans.** `DecisionTree.ingest` opens a case: Telegram next of kin and Telegram to the senior at t+0. If the senior acks `yes`, the case closes as all-clear. Otherwise `POST /cases/{id}/ack` moves the ladder. A 0.5 s tick loop fires secondary (t+60) and CareLine stub (t+180). Twilio is not on this path; `server.adapters.twilio` is kept for a future voice plug-in.
+6. **Dashboard → edge.** Browser uses `GET /api/state` and WebSocket `/ws`. It does not ingest samples.
 
-If the edge log does not print `[edge] UDP listening on 0.0.0.0:9000`, phones are sending into the void. Set `EDGE_ENABLE_UDP=1` in `.env` and restart.
+If the edge log does not print `[edge] UDP listening on 0.0.0.0:9000` and `[edge] UDP PCM listening on 0.0.0.0:9001`, phones are sending into the void. Set `EDGE_ENABLE_UDP=1` in `.env` and restart.
 
 ---
 
@@ -61,6 +62,23 @@ Pydantic models used on the wire and in logs. Extra keys on `SensorSample` are i
 
 UDP ingest also stamps `_nid` (from `id`) and `from` (`ip:port`). Those are not sent by the phone.
 
+### PCM frame (UDP `:9001`, not WAV)
+
+Little-endian. Magic `OPYA`. UUID is 16 raw bytes (same id as JSON). Typical payload: 20 ms = 320 samples = 640 B.
+
+| Offset | Size | Field |
+|---|---|---|
+| 0 | 4 | `OPYA` |
+| 4 | 1 | version `1` |
+| 5 | 4 | seq uint32 |
+| 9 | 8 | `t_ms` uint64 (unix ms of sample 0) |
+| 17 | 16 | node UUID bytes |
+| 33 | 2 | sample rate (16000) |
+| 35 | 2 | n samples |
+| 37 | 2n | PCM s16le mono |
+
+Pack/unpack: `shared/pcm.py`. Join: `edge/pcm_ring.py` `slice_ms(t_start_ms, t_end_ms)`.
+
 ### `SensorWindow`
 
 One 2 s slice for the CNN. `node_id` is `Phone 1` … `Phone 5`. `room` is the integer slot `1` … `5`. Lists `mag, ax, ay, az, db` are length 100 at 50 Hz. `t_start_ms` / `t_end_ms` come from the first and last sample `t`.
@@ -90,11 +108,11 @@ Same identity fields as inference, plus `threshold` (the gate, currently `0.90`)
 
 ## Phone
 
-Two producers, same packet: the iOS app and `phone/fake_phone.py`.
+Two producers: the iOS app and `phone/fake_phone.py`. JSON `SensorSample` on `:9000`; PCM frames on `:9001`.
 
-**Input:** none from the network. Sensors only (CoreMotion 50 Hz + mic RMS).
+**Input:** none from the network. Sensors only (CoreMotion 50 Hz + mic).
 
-**Output:** UDP datagrams to `--host/--port` (default `127.0.0.1:9000`). No HTTP API.
+**Output:** UDP JSON to `--host/--port` (default `127.0.0.1:9000`) and PCM to `port+1`. No HTTP API.
 
 ### iOS (`phone/OpoyoPhone`)
 
@@ -106,7 +124,7 @@ xcodegen generate
 open OpoyoPhone.xcodeproj
 ```
 
-On first launch allow Microphone and Local Network. Type the laptop LAN IP. Port `9000`. Start. Face-down on tile. Screen stays on while streaming (iOS will not stream CoreMotion/mic in the background).
+On first launch allow Microphone and Local Network. Type the laptop LAN IP. Port `9000` (PCM uses `9001`). Start. Face-down on tile. Screen stays on while streaming (iOS will not stream CoreMotion/mic in the background).
 
 If the phone is the hotspot, the Mac is almost always `172.20.10.11`. Campus Wi-Fi often blocks UDP; hotspot is the trusted demo network.
 
@@ -122,7 +140,9 @@ python phone/fake_phone.py --nodes 1 --impact knee --seconds 8
 
 | Flag | Meaning |
 |---|---|
-| `--host` / `--port` | Edge UDP target (default `127.0.0.1:9000`) |
+| `--host` / `--port` | Edge JSON UDP target (default `127.0.0.1:9000`) |
+| `--pcm-port` | PCM UDP port (default `port+1`) |
+| `--no-pcm` | JSON only |
 | `--hz` | Sample rate (default 50) |
 | `--seconds` | Duration |
 | `--nodes` | How many fake phones (max 5). Phone 1 / room 1, then Phone 2 / room 2, … |
@@ -151,7 +171,7 @@ python phone/fake_phone.py --nodes 2 --ids 11111111-1111-1111-1111-111111111111,
 
 FastAPI process. Default `http://0.0.0.0:8000` plus UDP `0.0.0.0:9000`.
 
-**In:** UDP `SensorSample`. Optional dashboard HTTP/WS (no sample ingest over HTTP).
+**In:** UDP `SensorSample` on `:9000` and `OPYA` PCM on `:9001`. Optional dashboard HTTP/WS (no sample ingest over HTTP).
 
 **Out:** dashboard JSON; `inference.jsonl`; gated `FallEvent` POST to the cloud.
 
@@ -164,6 +184,7 @@ FastAPI process. Default `http://0.0.0.0:8000` plus UDP `0.0.0.0:9000`.
 | `GET` | `/api/state` | — | Snapshot: slots, combined mag/dB, histories, latest inference, last 50 log rows, read-only `cfg` |
 | WebSocket | `/ws` | Client may send any text (ignored; keep-alive) | First message `{k: "state", ...}` (same as `/api/state`). Then `{k: "tick", ...}` per ingested packet |
 | UDP | `:9000` | JSON `SensorSample` | — (side effect: ingest) |
+| UDP | `:9001` | Binary `OPYA` PCM (16 kHz s16le) | — (side effect: ring + join on window) |
 
 No `POST /api/edge/config`. Threshold, window, hop, and cloud URL are constants in `edge/app.py`. No phone rename route.
 

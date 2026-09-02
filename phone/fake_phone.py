@@ -14,6 +14,8 @@ import socket
 import time
 import uuid
 
+from shared.pcm import pack_frame
+
 MODELS = [
     "iPhone 17 Pro Max",
     "iPhone 16",
@@ -115,10 +117,38 @@ def send_udp(packets: list[dict], host: str, port: int) -> int:
     return sent
 
 
+def pcm_frame(node_id: str, *, seq: int, t_ms: int, elapsed: float, kind: str = "") -> bytes:
+    """20 ms of 16 kHz s16le. Burst follows mag_for so knee/book are audible."""
+    n = 320
+    mag = mag_for(kind, elapsed, 0)
+    amp = int(min(8000, 400 + 12000 * mag))
+    samples = bytearray()
+    for i in range(n):
+        # cheap tone; amplitude tracks mag
+        v = int(amp * math.sin(2 * math.pi * (i / n) * 4))
+        v = max(-32767, min(32767, v))
+        samples += int(v).to_bytes(2, "little", signed=True)
+    return pack_frame(node_id, seq=seq, t_ms=t_ms, samples=bytes(samples))
+
+
+def send_udp_pcm(frames: list[bytes], host: str, port: int) -> int:
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sent = 0
+    try:
+        for frame in frames:
+            sock.sendto(frame, (host, port))
+            sent += 1
+    finally:
+        sock.close()
+    return sent
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=9000)
+    parser.add_argument("--pcm-port", type=int, default=0, help="PCM UDP port (default port+1)")
+    parser.add_argument("--no-pcm", action="store_true", help="JSON only")
     parser.add_argument("--hz", type=float, default=50)
     parser.add_argument("--seconds", type=float, default=8)
     parser.add_argument("--nodes", type=int, default=3)
@@ -135,19 +165,23 @@ def main() -> None:
         ids = [str(uuid.uuid4()) for _ in range(count)]
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    pcm_port = args.pcm_port if args.pcm_port > 0 else args.port + 1
     interval = 1.0 / args.hz
     n = int(args.seconds * args.hz)
     t0 = time.time()
     sent = 0
+    pcm_sent = 0
     kind = args.impact or ""
+    seq = {nid: 0 for nid in ids}
     for _i in range(n):
         t = time.time()
         elapsed = t - t0
+        t_ms = int(t * 1000)
         for nidx, nid in enumerate(ids):
             packet = make_packet(
                 nid,
                 nidx=nidx,
-                t_ms=int(t * 1000),
+                t_ms=t_ms,
                 elapsed=elapsed,
                 kind=kind,
             )
@@ -155,9 +189,18 @@ def main() -> None:
             wire = {k: v for k, v in packet.items() if k != "_nid"}
             sock.sendto(json.dumps(wire).encode("utf-8"), (args.host, args.port))
             sent += 1
+            if not args.no_pcm:
+                frame = pcm_frame(
+                    nid, seq=seq[nid], t_ms=t_ms, elapsed=elapsed, kind=kind
+                )
+                sock.sendto(frame, (args.host, pcm_port))
+                seq[nid] += 1
+                pcm_sent += 1
         time.sleep(interval)
     sock.close()
     print(f"sent {sent} packets from {count} nodes to {args.host}:{args.port}")
+    if pcm_sent:
+        print(f"sent {pcm_sent} PCM frames to {args.host}:{pcm_port}")
     print("ids: " + ",".join(ids))
 
 

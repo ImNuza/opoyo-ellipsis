@@ -3,7 +3,7 @@ import CoreMotion
 import Foundation
 import Observation
 
-/// 50 Hz CoreMotion + mic dB → SensorSample JSON over UDP. Screen must stay on.
+/// 50 Hz CoreMotion + mic dB JSON on :port, 16 kHz PCM on :port+1. Screen must stay on.
 @Observable
 final class SensorSession {
     var host: String
@@ -29,7 +29,11 @@ final class SensorSession {
     private let motion = CMMotionManager()
     private let engine = AVAudioEngine()
     private let client = UDPClient()
+    private let pcmClient = UDPClient()
     private let meter = DbMeter()
+    private let pcmLock = NSLock()
+    private var pcmSeq: UInt32 = 0
+    private var pcmFormat: AVAudioFormat?
     private var tapInstalled = false
     private var streamUDP = false
     private var sensingForTakeOnly = false
@@ -99,6 +103,7 @@ final class SensorSession {
         }
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
         client.close()
+        pcmClient.close()
         isRunning = false
         if !isCapturing {
             status = "Stopped"
@@ -123,6 +128,14 @@ final class SensorSession {
                 status = "Bad Mac address. Use dotted IPv4, not a name."
                 return
             }
+            let pcmPort = port &+ 1
+            guard pcmClient.connect(host: host, port: pcmPort) else {
+                status = "Bad Mac address for PCM port \(pcmPort)."
+                return
+            }
+            pcmLock.lock()
+            pcmSeq = 0
+            pcmLock.unlock()
         }
         motion.deviceMotionUpdateInterval = 1.0 / 50.0
         motion.startDeviceMotionUpdates(using: .xArbitraryZVertical, to: .main) { [weak self] data, error in
@@ -158,7 +171,16 @@ final class SensorSession {
         let input = engine.inputNode
         let format = input.inputFormat(forBus: 0)
         let dbMeter = meter
-        input.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in
+        let outFormat = AVAudioFormat(
+            commonFormat: .pcmFormatInt16,
+            sampleRate: 16_000,
+            channels: 1,
+            interleaved: true
+        )
+        pcmLock.lock()
+        pcmFormat = (format.sampleRate > 0) ? outFormat : nil
+        pcmLock.unlock()
+        input.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
             guard let channel = buffer.floatChannelData?[0] else { return }
             let n = Int(buffer.frameLength)
             guard n > 0 else { return }
@@ -170,9 +192,48 @@ final class SensorSession {
             let rms = sqrt(sum / Float(n))
             let db = Double(20 * log10(max(rms, 1e-8)))
             dbMeter.set(db)
+            self?.sendPcm(buffer)
         }
         tapInstalled = true
         try engine.start()
+    }
+
+    private func sendPcm(_ buffer: AVAudioPCMBuffer) {
+        guard streamUDP, buffer.frameLength > 0 else { return }
+        pcmLock.lock()
+        let outFormat = pcmFormat
+        pcmLock.unlock()
+        guard let outFormat,
+              let conv = AVAudioConverter(from: buffer.format, to: outFormat)
+        else { return }
+
+        let ratio = outFormat.sampleRate / buffer.format.sampleRate
+        let capacity = AVAudioFrameCount(Double(buffer.frameLength) * ratio) + 64
+        guard let outBuf = AVAudioPCMBuffer(pcmFormat: outFormat, frameCapacity: capacity) else { return }
+
+        var error: NSError?
+        var provided = false
+        let status = conv.convert(to: outBuf, error: &error) { _, outStatus in
+            if provided {
+                outStatus.pointee = .endOfStream
+                return nil
+            }
+            provided = true
+            outStatus.pointee = .haveData
+            return buffer
+        }
+        if status == .error { return }
+        let frames = Int(outBuf.frameLength)
+        guard frames > 0, let ptr = outBuf.int16ChannelData?[0] else { return }
+        let pcm = Data(bytes: ptr, count: frames * MemoryLayout<Int16>.size)
+
+        pcmLock.lock()
+        let seq = pcmSeq
+        pcmSeq &+= 1
+        pcmLock.unlock()
+        let tMs = UInt64(Date().timeIntervalSince1970 * 1000)
+        let payload = PCMFrame.pack(nodeId: nodeId, seq: seq, tMs: tMs, pcm: pcm)
+        pcmClient.send(payload)
     }
 
     private func emit(_ data: CMDeviceMotion) {

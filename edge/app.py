@@ -1,7 +1,7 @@
 """Edge FastAPI: UDP ingest, windowed inference, dashboard, gated POST to cloud.
 
 HTTP :8000 serves the dashboard and /ws ticks. Phones send SensorSample JSON to
-UDP :9000. Raw axes never leave this process.
+UDP :9000 and 16 kHz PCM to :9001. Raw axes and PCM never leave this process.
 """
 
 from __future__ import annotations
@@ -23,7 +23,9 @@ from pydantic import ValidationError
 from edge.gate import EscalationGate, HttpCloudClient
 from edge.infer import Classifier, StubCnn
 from edge.log import InferenceLog
+from edge.pcm_ring import PcmRing
 from edge.window import WindowBuilder
+from shared.pcm import unpack_frame
 from shared.schemas import SensorSample
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -31,6 +33,7 @@ load_dotenv(ROOT / ".env")
 
 UDP_HOST = "0.0.0.0"
 UDP_PORT = 9000
+UDP_PCM_PORT = 9001
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 DATA_DIR = Path(__file__).resolve().parent / "data"
 MAX_NODES = 5
@@ -110,6 +113,7 @@ class Node:
             "mag": _num(latest, "mag"),
             "db": _num(latest, "db", -120.0),
             "t": latest.get("t"),
+            "pcm_buffered_ms": 0.0,
         }
 
 
@@ -133,6 +137,8 @@ class Hub:
         self.packets = 0
         self.lock = asyncio.Lock()
         self.latest_inference: dict[str, Any] | None = None
+        self.pcm_rings: dict[str, PcmRing] = {}
+        self.last_pcm: dict[str, dict[str, Any]] = {}
 
     def _combined(self, now: float) -> dict[str, Any]:
         live = [n for n in self.nodes.values() if n.live(now) and n.latest]
@@ -228,10 +234,13 @@ class Hub:
                 sample, node_id=node.name, room=node.slot
             )
             if window is not None:
+                self._join_pcm(nid, window.t_start_ms, window.t_end_ms)
                 result = self.classifier.infer(window)
                 self.gate.handle(result)
                 self.latest_inference = result.model_dump()
             inference = self.inference_public()
+            pcm = self.last_pcm.get(nid) or {}
+            ring = self.pcm_rings.get(nid)
             tick = {
                 "k": "tick",
                 "id": nid,
@@ -248,6 +257,9 @@ class Hub:
                 "t": packet.get("t"),
                 "packets": node.packets,
                 "hz": node.hz(now),
+                "pcm_samples": pcm.get("samples", 0),
+                "pcm_coverage": pcm.get("coverage", 0.0),
+                "pcm_buffered_ms": round(ring.buffered_ms(), 1) if ring else 0.0,
                 "combined": combined,
                 "inference": inference,
             }
@@ -276,7 +288,10 @@ class Hub:
                 if node is None:
                     slots.append({"slot": slot, "empty": True})
                     continue
-                slots.append(node.public(now))
+                public = node.public(now)
+                ring = self.pcm_rings.get(node.id)
+                public["pcm_buffered_ms"] = round(ring.buffered_ms(), 1) if ring else 0.0
+                slots.append(public)
                 histories[node.id] = [
                     {
                         "t": p.get("t"),
@@ -299,6 +314,43 @@ class Hub:
                 "inference": self.inference_public(),
             }
 
+    def _join_pcm(self, nid: str, t_start_ms: int, t_end_ms: int) -> None:
+        ring = self.pcm_rings.get(nid)
+        if ring is None:
+            self.last_pcm[nid] = {
+                "samples": 0,
+                "coverage": 0.0,
+                "t_start_ms": t_start_ms,
+                "t_end_ms": t_end_ms,
+            }
+            return
+        clip, coverage = ring.slice_ms(t_start_ms, t_end_ms)
+        self.last_pcm[nid] = {
+            "samples": int(clip.size),
+            "coverage": float(coverage),
+            "t_start_ms": t_start_ms,
+            "t_end_ms": t_end_ms,
+        }
+
+    async def ingest_pcm(
+        self,
+        node_id: str,
+        seq: int,
+        t_ms: int,
+        pcm: bytes,
+        rate: int = 16000,
+    ) -> None:
+        """Append a PCM frame. Does not allocate a phone slot; JSON ingest does."""
+        del rate
+        if not node_id:
+            return
+        async with self.lock:
+            ring = self.pcm_rings.get(node_id)
+            if ring is None:
+                ring = PcmRing()
+                self.pcm_rings[node_id] = ring
+            ring.append(t_ms, pcm, seq=seq)
+
     async def add(self, ws: WebSocket) -> None:
         async with self.lock:
             self.clients.add(ws)
@@ -316,6 +368,7 @@ def create_app(
     enable_udp: bool | None = None,
     udp_host: str | None = None,
     udp_port: int | None = None,
+    udp_pcm_port: int | None = None,
 ) -> FastAPI:
     """Build the edge app. Tests inject classifier, cloud_client, log_path, UDP."""
     store = InferenceLog(log_path or (DATA_DIR / "inference.jsonl"))
@@ -337,10 +390,15 @@ def create_app(
         udp_on = bool(enable_udp)
     bind_host = UDP_HOST if udp_host is None else udp_host
     bind_port = UDP_PORT if udp_port is None else udp_port
+    if udp_pcm_port is None:
+        bind_pcm_port = 0 if bind_port == 0 else UDP_PCM_PORT
+    else:
+        bind_pcm_port = udp_pcm_port
 
     app = FastAPI(title="OPOYO edge")
     app.state.hub = hub
     app.state.udp_port = None
+    app.state.udp_pcm_port = None
     if STATIC_DIR.exists():
         app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
@@ -357,6 +415,23 @@ def create_app(
             payload["_nid"] = _node_id(payload, addr)
             loop = asyncio.get_running_loop()
             loop.create_task(hub.ingest(payload))
+
+    class PcmProtocol(asyncio.DatagramProtocol):
+        def datagram_received(self, data: bytes, addr: tuple[str, int]) -> None:
+            del addr
+            frame = unpack_frame(data)
+            if frame is None:
+                return
+            loop = asyncio.get_running_loop()
+            loop.create_task(
+                hub.ingest_pcm(
+                    frame.node_id,
+                    seq=frame.seq,
+                    t_ms=frame.t_ms,
+                    pcm=frame.pcm,
+                    rate=frame.rate,
+                )
+            )
 
     @app.get("/")
     async def index() -> FileResponse:
@@ -392,7 +467,14 @@ def create_app(
         )
         sockname = transport.get_extra_info("sockname")
         app.state.udp_port = int(sockname[1]) if sockname else bind_port
+        pcm_transport, _pcm_protocol = await loop.create_datagram_endpoint(
+            PcmProtocol,
+            local_addr=(bind_host, bind_pcm_port),
+        )
+        pcm_sockname = pcm_transport.get_extra_info("sockname")
+        app.state.udp_pcm_port = int(pcm_sockname[1]) if pcm_sockname else bind_pcm_port
         print(f"[edge] UDP listening on {bind_host}:{app.state.udp_port}")
+        print(f"[edge] UDP PCM listening on {bind_host}:{app.state.udp_pcm_port}")
 
     return app
 
