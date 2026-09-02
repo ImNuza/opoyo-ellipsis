@@ -45,6 +45,57 @@ def mag_for(kind: str, elapsed: float, nidx: int) -> float:
     return 0.012 + 0.01 * math.sin(phase * 7)
 
 
+def make_packet(
+    node_id: str,
+    *,
+    nidx: int = 0,
+    t_ms: int,
+    elapsed: float,
+    kind: str = "",
+) -> dict:
+    """Build one v2 UDP/ingest packet, including `_nid` for Hub.ingest."""
+    mag = mag_for(kind, elapsed, nidx)
+    phase = elapsed * (1.4 + nidx * 0.35) + nidx
+    ax = mag * (0.15 + 0.05 * nidx)
+    ay = mag * 0.08 * math.sin(phase)
+    az = mag
+    db = -52 + 22 * mag + nidx * 2
+    return {
+        "v": 2,
+        "id": node_id,
+        "_nid": node_id,
+        "model": MODELS[nidx % len(MODELS)],
+        "t": t_ms,
+        "ax": round(ax, 4),
+        "ay": round(ay, 4),
+        "az": round(az, 4),
+        "mag": round(mag, 4),
+        "db": round(db, 2),
+        "from": "127.0.0.1:9",
+    }
+
+
+def sample_stream(
+    node_ids: list[str],
+    *,
+    n: int,
+    hz: float = 50.0,
+    t0_ms: int = 1_735_689_600_000,
+    kind: str = "",
+) -> list[dict]:
+    """N ticks of interleaved packets, same shape as the UDP CLI."""
+    interval_ms = int(round(1000.0 / hz))
+    packets: list[dict] = []
+    for i in range(n):
+        elapsed = i / hz
+        t_ms = t0_ms + i * interval_ms
+        for nidx, nid in enumerate(node_ids):
+            packets.append(
+                make_packet(nid, nidx=nidx, t_ms=t_ms, elapsed=elapsed, kind=kind)
+            )
+    return packets
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--host", default="127.0.0.1")
@@ -74,24 +125,15 @@ def main() -> None:
         t = time.time()
         elapsed = t - t0
         for nidx, nid in enumerate(ids):
-            mag = mag_for(kind, elapsed, nidx)
-            phase = elapsed * (1.4 + nidx * 0.35) + nidx
-            ax = mag * (0.15 + 0.05 * nidx)
-            ay = mag * 0.08 * math.sin(phase)
-            az = mag
-            db = -52 + 22 * mag + nidx * 2
-            packet = {
-                "v": 2,
-                "id": nid,
-                "model": MODELS[nidx % len(MODELS)],
-                "t": int(t * 1000),
-                "ax": round(ax, 4),
-                "ay": round(ay, 4),
-                "az": round(az, 4),
-                "mag": round(mag, 4),
-                "db": round(db, 2),
-            }
-            sock.sendto(json.dumps(packet).encode("utf-8"), (args.host, args.port))
+            packet = make_packet(
+                nid,
+                nidx=nidx,
+                t_ms=int(t * 1000),
+                elapsed=elapsed,
+                kind=kind,
+            )
+            wire = {k: v for k, v in packet.items() if k != "_nid"}
+            sock.sendto(json.dumps(wire).encode("utf-8"), (args.host, args.port))
             sent += 1
         time.sleep(interval)
     sock.close()

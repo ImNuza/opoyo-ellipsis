@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from shared.schemas import FallEvent, InferenceResult, fall_event_from_inference
+from shared.schemas import FallEvent, InferenceResult
 
 
 class CloudClient(Protocol):
