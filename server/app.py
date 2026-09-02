@@ -98,3 +98,6 @@ def create_app(tree: DecisionTree | None = None) -> FastAPI:
 
     return app
 
+
+app = create_app()
+
