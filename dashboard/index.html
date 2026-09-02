@@ -1,0 +1,766 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OPOYO</title>
+  <link rel="icon" href="/static/logo.png" type="image/png">
+  <link rel="apple-touch-icon" href="/static/logo.png">
+  <link rel="stylesheet" href="/static/tokens.css">
+  <style>
+    html, body { overflow-x: clip; }
+    * { box-sizing: border-box; }
+    html { color-scheme: light; }
+    html[data-theme="night"] { color-scheme: dark; }
+    body {
+      margin: 0;
+      min-height: 100dvh;
+      background: var(--color-paper);
+      color: var(--color-ink);
+      font-family: var(--font-body);
+      font-size: var(--text-md);
+      line-height: 1.45;
+    }
+    ::selection { background: var(--color-navy); color: var(--color-resist); }
+    :focus-visible {
+      outline: 3px solid var(--color-focus);
+      outline-offset: 3px;
+    }
+    .shell {
+      min-height: 100dvh;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+    }
+    header.mast {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-4);
+      padding: 14px var(--space-8);
+      background-color: var(--color-header);
+      background-image:
+        linear-gradient(
+          180deg,
+          color-mix(in srgb, var(--color-header) 58%, transparent),
+          color-mix(in srgb, var(--color-header) 78%, transparent)
+        ),
+        var(--header-batik);
+      background-size: cover;
+      background-position: center 38%;
+      color: var(--color-on-header);
+      border-bottom: var(--rule) solid color-mix(in srgb, var(--color-tan) 55%, transparent);
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+      color: inherit;
+      text-decoration: none;
+    }
+    .brand img { width: 40px; height: 40px; flex: none; }
+    .wordmark {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+    .wordmark strong {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 1.55rem;
+      letter-spacing: 0.18em;
+      line-height: 1;
+    }
+    .wordmark span {
+      font-size: 0.68rem;
+      letter-spacing: 0.12em;
+      color: var(--color-tan);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .actions { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+    button, select, input {
+      font-family: var(--font-body);
+      font-size: var(--text-sm);
+      color: var(--color-ink);
+      background: var(--color-resist);
+      border: var(--rule) solid var(--color-ink);
+      border-radius: var(--radius);
+      padding: 10px 14px;
+      min-height: 44px;
+    }
+    button { cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+    button, select, input {
+      transition: background var(--dur) var(--ease-out), color var(--dur) var(--ease-out);
+    }
+    header.mast button {
+      color: var(--color-on-header);
+      background: transparent;
+      border-color: color-mix(in srgb, var(--color-on-header) 45%, transparent);
+    }
+    button:hover { background: var(--color-wax); }
+    header.mast button:hover {
+      background: color-mix(in srgb, var(--color-on-header) 12%, transparent);
+    }
+    button:active { transform: translateY(1px); }
+    button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+    header.mast #cancelBtn,
+    header.mast #ackBtn {
+      color: var(--color-navy);
+      background: var(--color-tan);
+      border-color: var(--color-tan);
+    }
+    header.mast #cancelBtn:hover,
+    header.mast #ackBtn:hover {
+      background: var(--color-on-header);
+    }
+    main { padding: var(--space-6) var(--space-8) var(--space-8); min-width: 0; }
+    h2 {
+      margin: 0 0 var(--space-3);
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 1.05rem;
+      letter-spacing: 0.04em;
+    }
+    .top {
+      display: grid;
+      grid-template-columns: 1fr minmax(260px, 340px);
+      gap: var(--space-5);
+      margin-bottom: var(--space-5);
+      align-items: stretch;
+    }
+    .hero {
+      background: var(--color-resist);
+      border: var(--rule) solid var(--color-line);
+      padding: 22px 26px 20px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-height: 168px;
+    }
+    .hero .label {
+      font-size: var(--text-xs);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      margin-bottom: 6px;
+    }
+    .state {
+      margin: 0;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: clamp(2.6rem, 7vw, 5.4rem);
+      letter-spacing: 0.04em;
+      line-height: 0.92;
+      overflow-wrap: anywhere;
+    }
+    .meta {
+      margin: 12px 0 0;
+      font-family: var(--font-mono);
+      font-size: var(--text-sm);
+      color: var(--color-muted);
+    }
+    .hero[data-state="confirming"],
+    .hero[data-state="alert"] {
+      background: var(--color-navy);
+      color: var(--color-on-header);
+      border-color: var(--color-navy);
+    }
+    .hero[data-state="confirming"] .label,
+    .hero[data-state="alert"] .label,
+    .hero[data-state="confirming"] .meta,
+    .hero[data-state="alert"] .meta { color: var(--color-tan); }
+    .hero[data-state="alert"] .state { color: var(--color-tan); }
+    .hero[data-state="blocked"],
+    .hero[data-state="cancelled"] { background: var(--color-wax); }
+    .hero[data-state="recovered"] .state { color: var(--color-live); }
+    .hero[data-state="warmup"] .state { color: var(--color-wait); }
+    .panel {
+      background: var(--color-resist);
+      border: var(--rule) solid var(--color-line);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .panel .row { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+    .panel select, .panel input { min-width: 0; flex: 1; background: var(--color-paper); border-color: var(--color-line); }
+    .panel .row button { flex: none; }
+    .rec-count {
+      font-family: var(--font-mono);
+      font-size: var(--text-sm);
+      color: var(--color-muted);
+    }
+    .rec-count[data-on="true"] { color: var(--color-live); }
+    figure { margin: 0 0 var(--space-6); min-width: 0; }
+    figcaption {
+      font-size: var(--text-xs);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      margin-bottom: var(--space-2);
+    }
+    .chart-wrap {
+      background: var(--color-resist);
+      border: var(--rule) solid var(--color-line);
+    }
+    canvas { width: 100%; height: 220px; display: block; }
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: var(--space-3);
+      margin-bottom: var(--space-6);
+    }
+    .card {
+      background: var(--color-resist);
+      border: var(--rule) solid var(--color-line);
+      padding: 14px;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .card.empty { opacity: 0.5; }
+    .card h3 {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 600;
+      overflow-wrap: anywhere;
+    }
+    .chip {
+      font-size: 0.65rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--color-wait);
+    }
+    .chip[data-live="true"] { color: var(--color-live); }
+    .nums {
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      font-size: 0.78rem;
+      color: var(--color-muted);
+    }
+    .log-wrap {
+      background: var(--color-resist);
+      border: var(--rule) solid var(--color-line);
+      overflow: auto;
+      max-height: 280px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: var(--text-sm);
+    }
+    th, td {
+      text-align: left;
+      padding: 8px 12px;
+      border-bottom: var(--rule) solid var(--color-line);
+      white-space: nowrap;
+    }
+    th {
+      font-size: var(--text-xs);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      font-weight: 600;
+      position: sticky;
+      top: 0;
+      background: var(--color-resist);
+    }
+    td:nth-child(n+3) { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+    tbody tr[data-state="alert"] td:nth-child(2) { color: var(--color-navy); font-weight: 600; }
+    html[data-theme="night"] tbody tr[data-state="alert"] td:nth-child(2) { color: var(--color-tan); }
+    tbody tr[data-state="recovered"] td:nth-child(2) { color: var(--color-live); }
+    tbody tr[data-state="blocked"] td:nth-child(2) { color: var(--color-wait); }
+    .empty-log { color: var(--color-muted); font-size: var(--text-sm); }
+    footer {
+      display: flex;
+      justify-content: space-between;
+      gap: var(--space-4);
+      padding: var(--space-4) var(--space-8);
+      border-top: var(--rule) solid var(--color-line);
+      color: var(--color-muted);
+      font-size: var(--text-sm);
+    }
+    footer p { margin: 0; }
+    @media (max-width: 1100px) {
+      .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .top { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 768px) {
+      header.mast, main, footer { padding-left: var(--space-4); padding-right: var(--space-4); }
+      .cards { grid-template-columns: 1fr; }
+      .wordmark strong { font-size: 1.2rem; }
+      .state { font-size: clamp(2rem, 12vw, 3.2rem); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      button, select, input { transition: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="mast">
+      <a class="brand" href="/">
+        <img src="/static/logo.png" alt="">
+        <div class="wordmark">
+          <strong>OPOYO</strong>
+          <span>Observe · Predict · On Your Own</span>
+        </div>
+      </a>
+      <div class="actions">
+        <button type="button" id="theme">Night</button>
+        <button type="button" id="cancelBtn">Cancel</button>
+        <button type="button" id="ackBtn">Ack</button>
+      </div>
+    </header>
+
+    <main>
+      <div class="top">
+        <section class="hero" id="hero" data-state="idle">
+          <div class="label">Floor state</div>
+          <p class="state" id="stateWord">Idle</p>
+          <p class="meta" id="stateMeta">Waiting for signal</p>
+        </section>
+        <section class="panel" aria-label="Record">
+          <h2>Record</h2>
+          <div class="row">
+            <select id="recLabel" aria-label="Label">
+              <option value="heeldrop">heeldrop</option>
+              <option value="bag">bag</option>
+              <option value="book">book</option>
+              <option value="pan">pan</option>
+              <option value="door">door</option>
+              <option value="walk">walk</option>
+              <option value="quiet">quiet</option>
+              <option value="tv">tv</option>
+            </select>
+            <button type="button" id="recStart" aria-label="record start">Start</button>
+            <button type="button" id="recStop" aria-label="record stop" disabled>Stop</button>
+          </div>
+          <div class="row">
+            <input id="recFloor" type="text" placeholder="floor" aria-label="Floor">
+            <input id="recRoom" type="text" placeholder="room" aria-label="Room">
+          </div>
+          <div class="row">
+            <input id="recDist" type="number" min="0" step="0.1" placeholder="distance m" aria-label="Distance metres">
+            <input id="recNotes" type="text" placeholder="notes" aria-label="Notes">
+          </div>
+          <p class="rec-count" id="recCount" data-on="false">Not recording</p>
+        </section>
+      </div>
+
+      <figure>
+        <figcaption>RMS · threshold</figcaption>
+        <div class="chart-wrap">
+          <canvas id="rms" width="900" height="220" aria-label="RMS trace"></canvas>
+        </div>
+      </figure>
+
+      <h2>Phones</h2>
+      <div class="cards" id="cards"></div>
+
+      <h2>Event log</h2>
+      <div class="log-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>State</th>
+              <th>Score</th>
+              <th>Decay ms</th>
+              <th>Audio</th>
+            </tr>
+          </thead>
+          <tbody id="logBody">
+            <tr><td class="empty-log" colspan="5">No events yet</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+
+    <footer>
+      <p>Phone is a proxy. Confirm window is 10 s demo / 60 s product. Telegram dry_run until .env.</p>
+      <p id="foot">No packets</p>
+    </footer>
+  </div>
+  <script>
+    (function () {
+      const MAX = 220;
+      const LOG_MAX = 50;
+      const PAD = { l: 48, r: 16, t: 12, b: 24 };
+
+      let slots = [];
+      let detect = {
+        phase: "idle",
+        state: "idle",
+        banner: "Idle",
+        remaining_s: 0,
+        rms: 0,
+        threshold: null,
+        packets: 0,
+        warmup: true
+      };
+      let log = [];
+      let rmsBuf = [];
+      let lastThr = null;
+      let recording = null;
+
+      const heroEl = document.getElementById("hero");
+      const stateWordEl = document.getElementById("stateWord");
+      const stateMetaEl = document.getElementById("stateMeta");
+      const themeBtn = document.getElementById("theme");
+      const cancelBtn = document.getElementById("cancelBtn");
+      const ackBtn = document.getElementById("ackBtn");
+      const cardsEl = document.getElementById("cards");
+      const logBody = document.getElementById("logBody");
+      const footEl = document.getElementById("foot");
+      const canvas = document.getElementById("rms");
+      const recLabel = document.getElementById("recLabel");
+      const recStart = document.getElementById("recStart");
+      const recStop = document.getElementById("recStop");
+      const recFloor = document.getElementById("recFloor");
+      const recRoom = document.getElementById("recRoom");
+      const recDist = document.getElementById("recDist");
+      const recNotes = document.getElementById("recNotes");
+      const recCount = document.getElementById("recCount");
+
+      function token(name, fallback) {
+        return getComputedStyle(document.body).getPropertyValue(name).trim() || fallback;
+      }
+      function ink() { return token("--color-navy", "#1e3a5f"); }
+      function tan() { return token("--color-tan", "#c4a574"); }
+      function muted() { return token("--color-muted", "#5c6b7a"); }
+      function line() { return token("--color-line", "#d8d0c4"); }
+
+      function applyTheme(name) {
+        const night = name === "night";
+        document.documentElement.setAttribute("data-theme", night ? "night" : "cloth");
+        themeBtn.textContent = night ? "Cloth" : "Night";
+        try { localStorage.setItem("opoyo-theme", night ? "night" : "cloth"); } catch (e) {}
+        draw();
+      }
+      applyTheme((function () {
+        try { return localStorage.getItem("opoyo-theme") || "cloth"; } catch (e) { return "cloth"; }
+      })());
+      themeBtn.addEventListener("click", function () {
+        applyTheme(document.documentElement.getAttribute("data-theme") === "night" ? "cloth" : "night");
+      });
+
+      function escapeHtml(s) {
+        return String(s).replace(/[&<>"']/g, function (c) {
+          return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+        });
+      }
+      function fmt(n, digits) {
+        return typeof n === "number" && isFinite(n) ? n.toFixed(digits) : "—";
+      }
+      function pushBuf(buf, v) {
+        buf.push(v);
+        while (buf.length > MAX) buf.shift();
+      }
+      function fmtTime(ts) {
+        const d = new Date((Number(ts) || 0) * 1000);
+        if (!isFinite(d.getTime()) || d.getTime() <= 0) return "—";
+        return d.toLocaleTimeString(undefined, { hour12: false });
+      }
+
+      function stateKey(d) {
+        if (!d) return "idle";
+        if (d.state === "confirming") return "confirming";
+        if (d.warmup && (!d.state || d.state === "idle")) return "warmup";
+        return d.state || "idle";
+      }
+      function stateWord(d) {
+        const k = stateKey(d);
+        if (k === "confirming") {
+          const n = Math.max(0, Math.round(Number(d.remaining_s) || 0));
+          return "Confirming " + n + "s";
+        }
+        if (k === "warmup") return "Warmup";
+        return k.charAt(0).toUpperCase() + k.slice(1);
+      }
+
+      function sizeCanvas() {
+        const wrap = canvas.parentElement;
+        const dpr = Math.max(1, window.devicePixelRatio || 1);
+        const w = Math.max(320, wrap.clientWidth || 900);
+        const h = 220;
+        canvas.width = Math.floor(w * dpr);
+        canvas.height = Math.floor(h * dpr);
+        canvas.style.width = w + "px";
+        canvas.style.height = h + "px";
+        draw();
+      }
+
+      function draw() {
+        const ctx = canvas.getContext("2d");
+        const w = canvas.width;
+        const h = canvas.height;
+        const dpr = Math.max(1, window.devicePixelRatio || 1);
+        const pad = { l: PAD.l * dpr, r: PAD.r * dpr, t: PAD.t * dpr, b: PAD.b * dpr };
+        ctx.clearRect(0, 0, w, h);
+        const innerW = w - pad.l - pad.r;
+        const innerH = h - pad.t - pad.b;
+        const peak = Math.max(0.2, lastThr || 0, rmsBuf.length ? Math.max.apply(null, rmsBuf) : 0);
+        const max = peak * 1.15;
+        const min = 0;
+        ctx.strokeStyle = line();
+        ctx.lineWidth = dpr;
+        ctx.fillStyle = muted();
+        ctx.font = 11 * dpr + "px ui-monospace, SF Mono, Menlo, monospace";
+        const ticks = 4;
+        for (let i = 0; i <= ticks; i++) {
+          const frac = i / ticks;
+          const y = pad.t + innerH * (1 - frac);
+          const val = min + (max - min) * frac;
+          ctx.beginPath();
+          ctx.moveTo(pad.l, y);
+          ctx.lineTo(w - pad.r, y);
+          ctx.stroke();
+          ctx.fillText(val.toFixed(2), 6 * dpr, y + 3 * dpr);
+        }
+        ctx.fillText("rms", 6 * dpr, h - 6 * dpr);
+        if (typeof lastThr === "number" && isFinite(lastThr) && lastThr > min && lastThr < max) {
+          const y = pad.t + innerH - ((lastThr - min) / (max - min || 1)) * innerH;
+          ctx.beginPath();
+          ctx.setLineDash([6 * dpr, 4 * dpr]);
+          ctx.strokeStyle = tan();
+          ctx.lineWidth = 1.2 * dpr;
+          ctx.moveTo(pad.l, y);
+          ctx.lineTo(w - pad.r, y);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillStyle = tan();
+          ctx.fillText(lastThr.toFixed(2), w - pad.r - 40 * dpr, y - 4 * dpr);
+        }
+        if (rmsBuf.length < 2) return;
+        ctx.beginPath();
+        rmsBuf.forEach(function (v, i) {
+          const x = pad.l + (i / (MAX - 1)) * innerW;
+          const y = pad.t + innerH - ((v - min) / (max - min || 1)) * innerH;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        });
+        ctx.strokeStyle = ink();
+        ctx.lineWidth = 1.6 * dpr;
+        ctx.stroke();
+      }
+
+      function renderHero() {
+        const key = stateKey(detect);
+        heroEl.setAttribute("data-state", key);
+        stateWordEl.textContent = stateWord(detect);
+        const rms = fmt(detect.rms, 3);
+        const thr = detect.threshold == null ? "—" : fmt(detect.threshold, 3);
+        const pk = detect.packets || 0;
+        stateMetaEl.textContent = (detect.banner || key) + " · rms " + rms + " · thr " + thr + " · " + pk + " pkt";
+        footEl.textContent = pk + " packets · " + (detect.warmup ? "warmup" : key);
+      }
+
+      function renderCards() {
+        const parts = [];
+        for (let i = 0; i < 5; i++) {
+          const slot = slots[i] || { slot: i + 1, empty: true };
+          if (slot.empty) {
+            parts.push(
+              '<article class="card empty"><div class="chip">Waiting</div><h3>Phone ' +
+                (i + 1) +
+                '</h3><p class="nums">—</p></article>'
+            );
+            continue;
+          }
+          parts.push(
+            '<article class="card">' +
+              '<div class="chip" data-live="' + (slot.live ? "true" : "false") + '">' +
+                (slot.live ? "Live" : "Waiting") +
+              "</div>" +
+              "<h3>" + escapeHtml(slot.name || "Phone " + slot.slot) + "</h3>" +
+              '<p class="nums">' + fmt(slot.hz, 1) + " Hz · " + fmt(slot.mag, 3) + " g</p>" +
+            "</article>"
+          );
+        }
+        cardsEl.innerHTML = parts.join("");
+      }
+
+      function renderLog() {
+        if (!log.length) {
+          logBody.innerHTML = '<tr><td class="empty-log" colspan="5">No events yet</td></tr>';
+          return;
+        }
+        logBody.innerHTML = log.slice(0, LOG_MAX).map(function (ev) {
+          const st = ev.state || "—";
+          return (
+            '<tr data-state="' + escapeHtml(st) + '">' +
+              "<td>" + escapeHtml(fmtTime(ev.ts_unix)) + "</td>" +
+              "<td>" + escapeHtml(st) + "</td>" +
+              "<td>" + escapeHtml(fmt(ev.fall_score, 3)) + "</td>" +
+              "<td>" + escapeHtml(fmt(ev.decay_ms, 1)) + "</td>" +
+              "<td>" + escapeHtml(ev.veto_label || "—") + "</td>" +
+            "</tr>"
+          );
+        }).join("");
+      }
+
+      function renderRecord() {
+        const on = !!recording;
+        recStart.disabled = on;
+        recStop.disabled = !on;
+        recLabel.disabled = on;
+        if (!on) {
+          recCount.textContent = "Not recording";
+          recCount.setAttribute("data-on", "false");
+          return;
+        }
+        recCount.textContent = recording.label + " · " + (recording.n || 0) + " rows";
+        recCount.setAttribute("data-on", "true");
+      }
+
+      function applyDetect(d) {
+        if (!d) return;
+        detect = d;
+        if (typeof d.threshold === "number" && isFinite(d.threshold)) lastThr = d.threshold;
+        renderHero();
+      }
+
+      function applyLog(rows) {
+        if (!Array.isArray(rows)) return;
+        log = rows.slice(0, LOG_MAX);
+        renderLog();
+      }
+
+      function onEvent(ev) {
+        if (!ev) return;
+        log = [ev].concat(log.filter(function (r) {
+          return !(r.event_id === ev.event_id && r.state === ev.state);
+        }));
+        if (log.length > LOG_MAX) log.length = LOG_MAX;
+        renderLog();
+      }
+
+      function applyState(s) {
+        if (!s) return;
+        if (Array.isArray(s.slots)) slots = s.slots;
+        if (s.detect) applyDetect(s.detect);
+        if (Array.isArray(s.log)) applyLog(s.log);
+        if (Array.isArray(s.rms_hist) && s.rms_hist.length) {
+          rmsBuf = s.rms_hist.map(function (r) { return Number(r.rms) || 0; }).slice(-MAX);
+          const last = s.rms_hist[s.rms_hist.length - 1];
+          if (last && typeof last.thr === "number" && isFinite(last.thr)) lastThr = last.thr;
+        }
+        if (s.recording) recording = s.recording;
+        else if (s.recording === null) recording = null;
+        renderCards();
+        renderRecord();
+        draw();
+      }
+
+      function onTick(p) {
+        if (!p) return;
+        if (p.detect) {
+          applyDetect(p.detect);
+          if (typeof p.detect.rms === "number") {
+            pushBuf(rmsBuf, p.detect.rms);
+            if (typeof p.detect.threshold === "number" && isFinite(p.detect.threshold)) {
+              lastThr = p.detect.threshold;
+            }
+          }
+        }
+        if (p.id && slots.length) {
+          for (let i = 0; i < slots.length; i++) {
+            if (slots[i] && slots[i].id === p.id) {
+              slots[i].live = true;
+              if (typeof p.mag === "number") slots[i].mag = p.mag;
+              break;
+            }
+          }
+          renderCards();
+        }
+        if (recording) {
+          recording.n = (recording.n || 0) + 1;
+          renderRecord();
+        }
+        draw();
+      }
+
+      async function post(url, body) {
+        const opts = { method: "POST" };
+        if (body !== undefined) {
+          opts.headers = { "Content-Type": "application/json" };
+          opts.body = JSON.stringify(body);
+        }
+        const r = await fetch(url, opts);
+        try { return await r.json(); } catch (e) { return {}; }
+      }
+
+      cancelBtn.addEventListener("click", async function () {
+        try {
+          const d = await post("/api/cancel");
+          if (d && d.detect) applyDetect(d.detect);
+        } catch (e) {}
+      });
+      ackBtn.addEventListener("click", async function () {
+        try {
+          const d = await post("/api/ack");
+          if (d && d.detect) applyDetect(d.detect);
+        } catch (e) {}
+      });
+
+      recStart.addEventListener("click", async function () {
+        const dist = parseFloat(recDist.value);
+        const body = {
+          label: recLabel.value,
+          floor: recFloor.value.trim(),
+          room: recRoom.value.trim(),
+          notes: recNotes.value.trim(),
+          distance_m: isFinite(dist) ? dist : null
+        };
+        try {
+          const d = await post("/api/record/start", body);
+          if (d && d.ok) {
+            recording = { label: d.label || body.label, n: 0 };
+            renderRecord();
+          }
+        } catch (e) {}
+      });
+      recStop.addEventListener("click", async function () {
+        try {
+          await post("/api/record/stop");
+        } catch (e) {}
+        recording = null;
+        renderRecord();
+      });
+
+      function connect() {
+        const proto = location.protocol === "https:" ? "wss" : "ws";
+        const ws = new WebSocket(proto + "://" + location.host + "/ws");
+        ws.onmessage = function (ev) {
+          let p;
+          try { p = JSON.parse(ev.data); } catch (e) { return; }
+          if (!p) return;
+          if (p.k === "state") applyState(p);
+          else if (p.k === "tick") onTick(p);
+          else if (p.k === "event") onEvent(p.event);
+        };
+        ws.onclose = function () { setTimeout(connect, 1000); };
+      }
+
+      window.addEventListener("resize", sizeCanvas);
+      sizeCanvas();
+      renderCards();
+      renderHero();
+      renderRecord();
+      connect();
+
+      setInterval(async function () {
+        try {
+          const r = await fetch("/api/state");
+          applyState(await r.json());
+        } catch (e) {}
+      }, 1000);
+    })();
+  </script>
+</body>
+</html>

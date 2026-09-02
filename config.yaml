@@ -1,0 +1,44 @@
+room: "Living room"
+
+sensor:
+  accel_rate_hz: 50         # OpoyoPhone push rate (user-g, converted to m/s^2 on ingest)
+  mic_rate_hz: 16000        # YAMNet requires 16 kHz mono
+  buffer_seconds: 30
+  g_to_ms2: 9.81            # phone packets are in g
+
+trigger:
+  highpass_hz: 2.0          # kill gravity / drift
+  rms_window_ms: 100
+  baseline_seconds: 10.0
+  k_mad: 6.0                # fire at median + k * MAD
+  refractory_s: 2.0
+  min_peak_mag: 3.0         # m/s^2, absolute floor
+
+window:
+  pre_s: 0.5
+  post_s: 1.5
+
+classify:
+  model_path: "models/clf.joblib"
+  backbone_path: "models/backbone.npz"
+  head_path: "models/head.joblib"
+  fall_threshold: 0.60
+  use_transfer: true
+
+veto:
+  enabled: true
+  classes: ["Speech", "Television", "Music", "Radio", "Conversation"]
+  threshold: 0.30
+
+confirm:
+  window_s: 10              # DEMO value. Production is 60.
+  recovery_k: 3.0           # recovery if RMS exceeds baseline * k
+
+escalate:
+  dry_run: true             # flip to false when Telegram creds are set
+  rung2_delay_s: 60
+
+calibrate:
+  min_pos: 8
+  min_neg: 8
+  prior_synth: 40           # mix synthetic prior so the head cannot collapse

@@ -7,7 +7,8 @@ final class UDPClient: @unchecked Sendable {
     private var fd: Int32 = -1
     private var dest = sockaddr_in()
 
-    func connect(host: String, port: UInt16) {
+    @discardableResult
+    func connect(host: String, port: UInt16) -> Bool {
         lock.lock()
         defer { lock.unlock() }
         if fd >= 0 {
@@ -22,12 +23,13 @@ final class UDPClient: @unchecked Sendable {
         addr.sin_family = sa_family_t(AF_INET)
         addr.sin_port = port.bigEndian
         let ok = ip.withCString { inet_pton(AF_INET, $0, &addr.sin_addr) }
-        guard ok == 1 else { return }
+        guard ok == 1 else { return false }
 
         let sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
-        guard sock >= 0 else { return }
+        guard sock >= 0 else { return false }
         fd = sock
         dest = addr
+        return true
     }
 
     func send(_ data: Data) {

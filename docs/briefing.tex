@@ -1,0 +1,216 @@
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{tgheros}
+\renewcommand{\familydefault}{\sfdefault}
+\usepackage[italic]{mathastext}
+
+\usepackage[margin=2.3cm]{geometry}
+\usepackage{setspace}
+\onehalfspacing
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{amsmath}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage[hidelinks]{hyperref}
+\usepackage{xcolor}
+
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+
+\titleformat{\section}{\large\bfseries}{\thesection}{0.8em}{}
+\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection}{0.8em}{}
+\titlespacing*{\section}{0pt}{1.4em}{0.5em}
+\titlespacing*{\subsection}{0pt}{1.1em}{0.35em}
+
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{OPOYO}
+\rhead{pipeline note}
+\cfoot{\thepage}
+\renewcommand{\headrulewidth}{0.3pt}
+
+\setlength{\headheight}{14pt}
+\newcommand{\src}[1]{\textnormal{\small (#1)}}
+
+\title{\textbf{OPOYO}\\[0.35em]\large Pipeline note}
+\author{Dewa, Matteo, Gilchris, Shannon, Sonia}
+\date{Ellipsis Tech Series 2026}
+
+\begin{document}
+\maketitle
+\thispagestyle{fancy}
+
+\begin{abstract}
+\noindent
+OPOYO decides, from a live floor signal, whether a person-like impact occurred and whether the person then got up. This note is the claim set we have locked: what the pipeline does, where each number comes from, and how to collect the clips that will test the features. Labels on numbers are physics, Alwan range, runbook heuristic, placeholder, or unmeasured.
+\end{abstract}
+
+\section{The job}
+
+The event we care about is a fall after which the person cannot rise and cannot call. Time on the floor is what produces the medical harm. That interval is called a long lie.
+
+A wall button works only if the person can reach it and press it. A wearable works only if it is on and charged. A camera works in line of sight, and households refuse it in the bedroom and the bathroom. Those three paths leave this segment uncovered.
+
+OPOYO reads the floor and the air, then waits to see whether anyone moves. The senior is not asked to press, wear, or speak.
+
+\section{What arrives at the laptop}
+
+The production node is a piezo and a microphone bonded to the slab. Classification runs on the device. The object that leaves the flat is a few bytes of event JSON: room, time, score, state.
+
+The demo substitutes an iPhone for that node. The phone streams user-acceleration, already with gravity removed, in units of \(g\) \src{physics}. The rate is \(50\,\mathrm{Hz}\) \src{runbook heuristic}. Each tick also carries one loudness number in dB. Packets are UDP JSON
+\[
+\{v,\,id,\,model,\,t,\,ax,\,ay,\,az,\,mag,\,db\}
+\]
+to port \(9000\) \src{runbook heuristic}. The laptop multiplies magnitude by \(9.81\) to obtain \(\mathrm{m/s^2}\) \src{physics}.
+
+The phone is a sensor bridge. The slab measurement is a later substitution of the first stage. Downstream stages consume a clip and emit the same event object.
+
+\section{Why peak height is the wrong first question}
+
+A body and a dropped pan can put similar peak force into the floor. A detector that pages on peak height will page for a saucepan. The quantity that can separate those two events is shape: how long the envelope takes to fall, and where the energy sits in frequency.
+
+That separation is a hypothesis about this floor. Histograms on labelled clips will confirm it or kill it. Until those histograms exist, the claim is unmeasured.
+
+\section{Pipeline}
+
+Processing is a sequence of maps. Each map has one job.
+
+\subsection{High-pass}
+
+A \(2\,\mathrm{Hz}\) high-pass \src{runbook heuristic} removes gravity and slow drift from the magnitude trace. Walking, a television, and an impact still pass. The classifier later sees this high-passed trace, not the raw magnitude.
+
+\subsection{Trigger}
+
+The trigger asks whether the floor's energy just left the room's own quiet level. Let \(R\) be recent RMS values from frames treated as quiet. The threshold is
+\[
+\theta = \mathrm{median}(R) + k\cdot\mathrm{MAD}(R).
+\]
+The factor \(k=6\) is a runbook heuristic. Scaled MAD estimates \(\sigma\) when \(R\) is Gaussian \src{physics}. A fire also requires the peak to exceed \(3\,\mathrm{m/s^2}\) \src{runbook heuristic}. Quiet frames alone update the baseline, so a fall cannot raise the bar that should catch the next one. After a fire, a \(2\,\mathrm{s}\) refractory period \src{runbook heuristic} blocks a second trip on the same ring-down. The trigger stays in warmup until five quiet samples have been seen \src{runbook heuristic}.
+
+This stage detects onset. It does not name the source.
+
+A neighbour drilling is a second source in the same band. Median-plus-MAD assumes a roughly stationary quiet floor. Drilling violates that assumption. Crest factor would mark an impulse against a continuous buzz; the present trigger does not compute it.
+
+\subsection{Window}
+
+The decay that can separate a body from a click occurs after the peak. The peak is what the trigger just saw, so the tail does not yet exist. The extractor waits \(1.5\,\mathrm{s}\) \src{runbook heuristic}, then copies \(0.5\,\mathrm{s}\) before the hit and \(1.5\,\mathrm{s}\) after it. The resulting clip is \(2\,\mathrm{s}\) long so the tail sits inside the window.
+
+Our figure~6 caption draws a body decaying over about \(1\,\mathrm{s}\) and a rigid object stopping within about \(150\,\mathrm{ms}\). Those times are unmeasured here. They are a schematic, not a citation.
+
+Alwan et al.\ (2006) report a useful radius of about \(15\)--\(20\,\mathrm{ft}\) on concrete \src{Alwan range}. That bound is one construction. This build has not measured coverage on tile.
+
+\subsection{Seven features}
+
+Let \(w\) be the high-passed magnitude in the clip, and \(e=|w|\). The rule classifier uses seven numbers from \(e\).
+
+\begin{center}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+Name & Definition & Job \\
+\midrule
+\texttt{peak} & \(\max e\) & size of the hit \\
+\texttt{rms} & \(\sqrt{\mathrm{mean}(w^2)}\) & energy of the whole clip \\
+\texttt{crest} & peak$/$rms & impulsiveness \\
+\texttt{rise\_ms} & time from \(0.1\cdot\mathrm{peak}\) up to the peak & onset duration \\
+\texttt{decay\_ms} & time from the peak down to \(0.1\cdot\mathrm{peak}\) & tail duration \\
+\texttt{low\_ratio} & fraction of \(|X(f)|\) at low \(f\) & where the spectrum sits \\
+\texttt{centroid\_hz} & \(\sum f|X(f)|/\sum |X(f)|\) & the same, as one frequency \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Crest, rise, and decay describe shape. Peak and RMS describe scale. Distance moves scale. Shape is what we are betting on.
+
+The phone samples at \(50\,\mathrm{Hz}\) \src{runbook heuristic}, so Nyquist is \(25\,\mathrm{Hz}\) \src{physics}. Spectral features then see almost the whole band. Envelope features can still separate a bag from a book on hard tile. That separation is unmeasured until the histograms exist.
+
+\subsection{Score}
+
+Both classifiers implement \(p=\mathrm{score}(w)\in[0,1]\). \texttt{RuleClassifier} is a sigmoid on decay, low-frequency share, and crest, and it runs with no weight file. \texttt{ModelClassifier} is a linear probe on the same seven numbers when \texttt{models/clf.joblib} exists.
+
+The cut \(p^*=0.60\) is a placeholder. A precision--recall sweep on labelled files will replace it. Below the cut, the event is logged as \texttt{candidate} and the chain stops. Above the cut, the audio check may still suppress the alarm.
+
+\subsection{Audio check}
+
+A second classifier may delete an alarm the floor model proposed. If the check is off, broken, or given an empty clip, it returns ``allow''. That is fail-open.
+
+YAMNet wants about \(16\,\mathrm{kHz}\) PCM \src{YAMNet input}. The live phone sends one dB per tick. The demo check therefore uses a loudness envelope behind the same interface. The check does not require speech after the fall. Silence or a thud is an allowed clip. Television or sustained loudness is a blocked clip.
+
+\subsection{Confirm}
+
+A body-like, unblocked impact can still be a heavy sit. The machine then waits. The demo wait is \(10\,\mathrm{s}\) \src{runbook heuristic}. The product wait is \(60\,\mathrm{s}\) \src{runbook heuristic}. Motion in the window yields \texttt{recovered}. Cancel on the dashboard yields \texttt{cancelled}. Silence until the clock ends yields \texttt{alert}, once.
+
+Only \texttt{alert} may send Telegram. The text carries room, local time, and score. A second message is scheduled \(60\,\mathrm{s}\) later \src{runbook heuristic} unless someone acknowledges. \texttt{dry\_run} defaults to true \src{runbook heuristic}, so the send is a log line until credentials are filled.
+
+\section{Learning}
+
+There is no large labelled set of falls on this tile. A model trained on another floor will not transfer at the output layer, because damping changes decay. The extractor therefore stays frozen. Calibration fits only the last layer on this floor.
+
+The intended set is about ten heel-drops and about ten dropped objects \src{runbook heuristic}. Leave-one-file-out is the split: one physical event is one file. Report precision, recall, F1, and a confusion matrix. Accuracy is the wrong metric. Falls are rare, so a constant ``no'' looks good.
+
+Whether the features work is empirical. If the decay histograms of heel-drop and book overlap on this floor, the theory does not hold here. Say that.
+
+Misses and false alarms will remain. The product question is their rates per month. Those rates are unmeasured.
+
+\section{Distance}
+
+One sensor does not give range. Amplitude falls with distance \src{physics}. A nearby tap and a far fall can share a peak. Coverage is measured at install, room by room. Alwan's \(15\)--\(20\,\mathrm{ft}\) on concrete \src{Alwan range} is a cited bound on one slab, not a specification for this unit.
+
+Structure-borne waves in concrete travel on the order of \(3\)--\(4\,\mathrm{km/s}\) \src{physics}. Airborne sound travels at about \(343\,\mathrm{m/s}\) \src{physics}. Across five metres the air arrives about \(13\,\mathrm{ms}\) later. At \(50\,\mathrm{Hz}\) that offset is less than one sample. The demo therefore classifies two parallel clips with the phone's own timestamps.
+
+\section{How to set the knobs}
+
+Tune from labelled files, after the histograms, before a live demo.
+
+\begin{center}
+\small
+\begin{tabular}{@{}llll@{}}
+\toprule
+Knob & Now & Label & From data \\
+\midrule
+\(k\) & \(6\) & runbook heuristic & raise if walk still fires; lower if heel-drop never fires \\
+\texttt{min\_peak\_mag} & \(3\,\mathrm{m/s^2}\) & runbook heuristic & above walk, below heel-drop and bag \\
+\texttt{pre\_s} & \(0.5\,\mathrm{s}\) & runbook heuristic & long enough that rise is unclipped \\
+\texttt{post\_s} & \(1.5\,\mathrm{s}\) & runbook heuristic & long enough that decay is unclipped \\
+\(p^*\) & \(0.60\) & placeholder & PR sweep on held-out files \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+If \(k<3\) is required to catch positives, the recordings are too weak. Move the phone closer and record again.
+
+\section{Work sequence}
+
+Build the pipeline. Collect labelled CSVs, one event per file. Plot \texttt{decay\_ms}, \texttt{crest}, and \texttt{low\_ratio} on this floor. Fit the last layer if the classes separate. Test on unseen takes: heel-drop and bag should reach \texttt{alert} or \texttt{recovered}; book, walk, and quiet should not send Telegram.
+
+Direction of the hit is unused in this binary proof of concept.
+
+\appendix
+\section{Collection}
+
+A friend can collect without the dashboard. Stop uvicorn first: recorder and dashboard both bind UDP \(9000\).
+
+Hard floor, phone face-down, case off, hotspot. Keep distance fixed at \(1.5\) to \(2\,\mathrm{m}\). From the \texttt{opoyo-ellipsis} directory:
+
+\begin{verbatim}
+python scripts/record.py --interactive --floor tile --room kitchen
+\end{verbatim}
+
+Each take: two seconds still, one action, two seconds still, stop. A new file is a new take.
+
+Positives: ten heel-drops (toes, then both heels, once) and ten bag-drops (backpack \(8\)--\(12\,\mathrm{kg}\), flat, from about waist height). A jump leaves the floor, so it is a different signal.
+
+Negatives: book \(\times 5\), pan \(\times 5\), door slam \(\times 8\), walk five paces \(\times 8\), quiet \(15\,\mathrm{s}\) \(\times 2\). Optional: television on, no impact, \(10\,\mathrm{s}\) \(\times 2\).
+
+The recorder writes \texttt{data/<label>\_<nn>.csv} with columns \(t,ax,ay,az,mag,db\), and appends one row to \texttt{data/metadata.csv}. Required metadata: floor, room, distance, case, object. Send the \texttt{data/} folder.
+
+Without a phone, in another window:
+\begin{verbatim}
+python scripts/fake_phone.py --impact heeldrop --seconds 8
+\end{verbatim}
+
+\end{document}

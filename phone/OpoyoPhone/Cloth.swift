@@ -140,23 +140,9 @@ struct KawungCloth: View {
 
 struct LogoMark: View {
     var body: some View {
-        Canvas { context, size in
-            let w = size.width
-            let h = size.height
-            func lobe(_ rect: CGRect, color: Color) {
-                let p = Path(ellipseIn: rect)
-                context.fill(p, with: .color(color))
-            }
-            lobe(CGRect(x: w * 0.08, y: h * 0.18, width: w * 0.84, height: h * 0.62), color: Color(hex: 0xC4A574))
-            lobe(CGRect(x: w * 0.18, y: h * 0.26, width: w * 0.64, height: h * 0.48), color: Color(hex: 0x3D7A7A))
-            lobe(CGRect(x: w * 0.28, y: h * 0.34, width: w * 0.44, height: h * 0.36), color: Color(hex: 0x1E3A5F))
-            let sun = CGRect(x: w * 0.42, y: h * 0.44, width: w * 0.16, height: w * 0.16)
-            context.fill(Path(ellipseIn: sun), with: .color(Color(hex: 0xFAF7F1)))
-            var base = Path()
-            base.move(to: CGPoint(x: w * 0.12, y: h * 0.9))
-            base.addLine(to: CGPoint(x: w * 0.88, y: h * 0.9))
-            context.stroke(base, with: .color(Color(hex: 0x1E3A5F)), lineWidth: 1.4)
-        }
-        .accessibilityHidden(true)
+        Image("LogoMark")
+            .resizable()
+            .scaledToFit()
+            .accessibilityHidden(true)
     }
 }

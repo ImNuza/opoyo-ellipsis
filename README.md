@@ -263,6 +263,14 @@ pytest
 
 ---
 
+## Also on this tree (from `main`)
+
+- `android/` collector APK (CSV share). Same floor job as iOS Collect.
+- `brand/` lockup and square mark. Edge dashboard uses `edge/static/logo.png`.
+- `opoyo/` and `scripts/record.py` are the older laptop kinematic pipeline. Live path is still edge → cloud.
+
+---
+
 ## Team
 
 Dewa, Matteo, Gilchris, Shannon, Sonia. Ellipsis Tech Series 2026 Track 1.
