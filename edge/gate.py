@@ -38,6 +38,10 @@ class HttpCloudClient:
             return
 
 
+def should_escalate(result: InferenceResult, threshold: float) -> bool:
+    return bool(result.is_fall) and result.confidence >= threshold
+
+
 class EscalationGate:
     """Always append to the log. Escalate iff is_fall and confidence >= threshold."""
 
@@ -55,7 +59,7 @@ class EscalationGate:
         append = getattr(self.store, "append", None)
         if callable(append):
             append(result)
-        if bool(result.is_fall) and result.confidence >= self.threshold:
+        if should_escalate(result, self.threshold):
             event = FallEvent(
                 event_id=result.inference_id,
                 inference_id=result.inference_id,
