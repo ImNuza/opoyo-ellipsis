@@ -1,3 +1,5 @@
+"""Figure A5 escalation: family Telegram, senior call, secondary, CareLine."""
+
 from __future__ import annotations
 
 import time

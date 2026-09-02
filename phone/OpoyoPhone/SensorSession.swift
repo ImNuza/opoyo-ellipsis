@@ -3,6 +3,7 @@ import CoreMotion
 import Foundation
 import Observation
 
+/// 50 Hz CoreMotion + mic dB → SensorSample JSON over UDP. Screen must stay on.
 @Observable
 final class SensorSession {
     var host: String

@@ -61,6 +61,7 @@ def create_app(tree: DecisionTree | None = None) -> FastAPI:
 
     @app.post("/events")
     async def ingest_event(event: FallEvent) -> JSONResponse:
+        """Open (or reuse) a case. 202 + EscalationCase. Fires t+0 alerts."""
         case = escalation.ingest(event)
         return JSONResponse(case.model_dump(), status_code=202)
 
@@ -89,6 +90,7 @@ def create_app(tree: DecisionTree | None = None) -> FastAPI:
 
     @app.on_event("startup")
     async def _ticks() -> None:
+        # Secondary Telegram at t+60 and CareLine stub at t+180 live here, not on a route.
         async def loop() -> None:
             while True:
                 await asyncio.sleep(0.5)
@@ -99,5 +101,6 @@ def create_app(tree: DecisionTree | None = None) -> FastAPI:
     return app
 
 
+# uvicorn / fastapi CLI: `server.app:app`
 app = create_app()
 

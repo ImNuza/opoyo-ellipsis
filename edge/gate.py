@@ -1,3 +1,5 @@
+"""Log every inference; POST FallEvent to the cloud only when gated."""
+
 from __future__ import annotations
 
 from typing import Protocol
@@ -18,6 +20,8 @@ class RecordingCloudClient:
 
 
 class HttpCloudClient:
+    """POST /events on the cloud. Failures are swallowed so ingest never blocks."""
+
     def __init__(self, base_url: str) -> None:
         self.base_url = base_url.rstrip("/")
 
@@ -35,6 +39,8 @@ class HttpCloudClient:
 
 
 class EscalationGate:
+    """Always append to the log. Escalate iff is_fall and confidence >= threshold."""
+
     def __init__(
         self,
         threshold: float,
@@ -49,7 +55,6 @@ class EscalationGate:
         append = getattr(self.store, "append", None)
         if callable(append):
             append(result)
-        # Check if the result should be escalated based on the threshold
         if bool(result.is_fall) and result.confidence >= self.threshold:
             event = FallEvent(
                 event_id=result.inference_id,

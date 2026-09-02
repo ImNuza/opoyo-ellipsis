@@ -1,3 +1,5 @@
+"""JSONL store for every InferenceResult. Default path: edge/data/inference.jsonl."""
+
 from __future__ import annotations
 
 from collections import deque
@@ -7,6 +9,7 @@ from shared.schemas import InferenceResult
 
 
 class InferenceLog:
+    """Append-only file plus a 500-row ring for the dashboard tail."""
     def __init__(self, path: Path, maxlen: int = 500) -> None:
         self.path = path
         self._ring: deque[InferenceResult] = deque(maxlen=maxlen)

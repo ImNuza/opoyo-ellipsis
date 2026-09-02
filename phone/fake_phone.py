@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Send synthetic phone packets to the local receiver. Not a fall model."""
+"""Synthetic UDP phones for the edge (port 9000). Not a fall classifier.
+
+--nodes is how many devices. --impact is the mag shape (quiet / knee / book).
+Packets are SensorSample JSON; they do not carry a scenario label.
+"""
 
 from __future__ import annotations
 
@@ -20,6 +24,7 @@ MODELS = [
 
 
 def mag_for(kind: str, elapsed: float, nidx: int) -> float:
+    """Return g at ``elapsed`` seconds. knee ~0.72, book ~1.2, else quiet + bump."""
     if kind == "knee":
         if elapsed < 0.4:
             return 0.01
@@ -146,6 +151,7 @@ def main() -> None:
                 elapsed=elapsed,
                 kind=kind,
             )
+            # Real phones do not send _nid; the edge UDP handler stamps it.
             wire = {k: v for k, v in packet.items() if k != "_nid"}
             sock.sendto(json.dumps(wire).encode("utf-8"), (args.host, args.port))
             sent += 1

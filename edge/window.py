@@ -1,9 +1,12 @@
+"""Sliding 2 s windows (1 s hop) over a single phone's 50 Hz stream."""
+
 from __future__ import annotations
 
 from shared.schemas import SensorSample, SensorWindow
 
 
 class WindowBuilder:
+    """Returns a SensorWindow every hop once 100 samples have arrived; else None."""
     def __init__(
         self,
         window_s: float = 2.0,
@@ -44,6 +47,7 @@ class WindowBuilder:
             return None
         chunk = self._buf[self._start : self._start + n]
         self._start += self.hop_n
+        # Drop samples that can no longer sit in a future window.
         cutoff = max(0, self._start - n)
         if cutoff:
             self._buf = self._buf[cutoff:]

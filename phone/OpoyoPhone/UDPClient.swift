@@ -1,6 +1,7 @@
 import Darwin
 import Foundation
 
+/// Fire-and-forget UDP to the edge (:9000). IPv4 only; no receive path.
 final class UDPClient: @unchecked Sendable {
     private let lock = NSLock()
     private var fd: Int32 = -1

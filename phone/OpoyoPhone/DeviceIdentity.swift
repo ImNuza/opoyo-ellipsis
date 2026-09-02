@@ -2,6 +2,7 @@ import Darwin
 import Foundation
 import UIKit
 
+/// Stable phone UUID in UserDefaults. This is SensorSample.id / the edge hub key.
 enum DeviceIdentity {
     static var nodeId: String {
         let key = "opoyo.nodeId"

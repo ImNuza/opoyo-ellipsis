@@ -1,3 +1,9 @@
+"""Edge FastAPI: UDP ingest, windowed inference, dashboard, gated POST to cloud.
+
+HTTP :8000 serves the dashboard and /ws ticks. Phones send SensorSample JSON to
+UDP :9000. Raw axes never leave this process.
+"""
+
 from __future__ import annotations
 
 import asyncio
@@ -29,8 +35,8 @@ STATIC_DIR = Path(__file__).resolve().parent / "static"
 DATA_DIR = Path(__file__).resolve().parent / "data"
 MAX_NODES = 5
 MAX_HISTORY = 220
-LIVE_S = 2.5
-RATE_S = 1.5
+LIVE_S = 2.5  # phone drops off the dashboard after this many seconds of silence
+RATE_S = 1.5  # packet-rate window for the Hz readout
 ESCALATE_MIN_CONFIDENCE = 0.90
 WINDOW_S = 2.0
 HOP_S = 1.0
@@ -55,6 +61,8 @@ def _node_id(packet: dict[str, Any], addr: tuple[str, int]) -> str:
 
 
 class Node:
+    """One physical phone. UUID is the hub key; slot is Phone N / room N."""
+
     def __init__(self, node_id: str, slot: int, model: str, short: str) -> None:
         self.id = node_id
         self.slot = slot
@@ -106,6 +114,8 @@ class Node:
 
 
 class Hub:
+    """In-memory coordinator: nodes, windows, classifier, gate, WebSocket clients."""
+
     def __init__(
         self,
         classifier: Classifier,
@@ -166,6 +176,11 @@ class Hub:
         return builder
 
     async def ingest(self, packet: dict[str, Any]) -> dict[str, Any] | None:
+        """Validate a sample, update the node, maybe classify, fan out a WS tick.
+
+        Requires ``_nid`` (UDP sets this from packet ``id``). Missing/invalid
+        samples are dropped with no log line.
+        """
         now = time.time()
         packet["recv_t"] = int(now * 1000)
         addr = packet.get("from", "")
@@ -208,6 +223,7 @@ class Hub:
                     "db": combined["db"],
                 }
             )
+            # Inference identity is Phone N / room slot, not the device UUID.
             window = self._builder(nid, node).push(
                 sample, node_id=node.name, room=node.slot
             )
@@ -301,6 +317,7 @@ def create_app(
     udp_host: str | None = None,
     udp_port: int | None = None,
 ) -> FastAPI:
+    """Build the edge app. Tests inject classifier, cloud_client, log_path, UDP."""
     store = InferenceLog(log_path or (DATA_DIR / "inference.jsonl"))
     client = cloud_client or HttpCloudClient(CLOUD_URL)
     gate = EscalationGate(threshold=ESCALATE_MIN_CONFIDENCE, client=client, store=store)
@@ -309,7 +326,15 @@ def create_app(
         gate=gate,
         store=store,
     )
-    udp_on = os.environ.get("EDGE_ENABLE_UDP") if enable_udp is None else enable_udp
+    # Unset → listen. Explicit 0/false/no → off. Tests pass enable_udp=False.
+    if enable_udp is None:
+        raw = os.environ.get("EDGE_ENABLE_UDP")
+        if raw is None:
+            udp_on = True
+        else:
+            udp_on = raw.strip().lower() not in {"0", "false", "no", ""}
+    else:
+        udp_on = bool(enable_udp)
     bind_host = UDP_HOST if udp_host is None else udp_host
     bind_port = UDP_PORT if udp_port is None else udp_port
 
@@ -328,6 +353,7 @@ def create_app(
             if not isinstance(payload, dict):
                 return
             payload["from"] = f"{addr[0]}:{addr[1]}"
+            # Hub.ingest requires _nid; phones only send id.
             payload["_nid"] = _node_id(payload, addr)
             loop = asyncio.get_running_loop()
             loop.create_task(hub.ingest(payload))
@@ -342,6 +368,7 @@ def create_app(
 
     @app.websocket("/ws")
     async def ws_feed(ws: WebSocket) -> None:
+        # First frame is a full snapshot; later frames are per-packet ticks.
         await ws.accept()
         await hub.add(ws)
         try:
@@ -356,6 +383,7 @@ def create_app(
     @app.on_event("startup")
     async def start_udp() -> None:
         if not udp_on:
+            print("[edge] UDP disabled (set EDGE_ENABLE_UDP=1)")
             return
         loop = asyncio.get_running_loop()
         transport, _protocol = await loop.create_datagram_endpoint(
@@ -364,9 +392,11 @@ def create_app(
         )
         sockname = transport.get_extra_info("sockname")
         app.state.udp_port = int(sockname[1]) if sockname else bind_port
+        print(f"[edge] UDP listening on {bind_host}:{app.state.udp_port}")
 
     return app
 
 
+# uvicorn / fastapi CLI look up this name: `edge.app:app`
 app = create_app()
 

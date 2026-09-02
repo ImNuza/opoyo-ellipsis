@@ -1,3 +1,5 @@
+"""Shared Pydantic models: SensorSample → SensorWindow → InferenceResult → FallEvent."""
+
 from shared.schemas import (
     AckEvent,
     EscalationCase,
