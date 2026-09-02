@@ -9,11 +9,13 @@ class WindowBuilder:
         window_s: float = 2.0,
         hop_s: float = 1.0,
         hz: float = 50.0,
-        room: str = "",
+        node_id: str = "",
+        room: int = 1,
     ) -> None:
         self.window_s = window_s
         self.hop_s = hop_s
         self.hz = hz
+        self.node_id = node_id
         self.room = room
         self._buf: list[SensorSample] = []
         self._start = 0
@@ -26,7 +28,14 @@ class WindowBuilder:
     def hop_n(self) -> int:
         return max(1, int(round(self.hop_s * self.hz)))
 
-    def push(self, sample: SensorSample, room: str | None = None) -> SensorWindow | None:
+    def push(
+        self,
+        sample: SensorSample,
+        node_id: str | None = None,
+        room: int | None = None,
+    ) -> SensorWindow | None:
+        if node_id is not None:
+            self.node_id = node_id
         if room is not None:
             self.room = room
         self._buf.append(sample)
@@ -40,7 +49,7 @@ class WindowBuilder:
             self._buf = self._buf[cutoff:]
             self._start -= cutoff
         return SensorWindow(
-            node_id=chunk[-1].id,
+            node_id=self.node_id or chunk[-1].id,
             room=self.room,
             t_start_ms=chunk[0].t,
             t_end_ms=chunk[-1].t,

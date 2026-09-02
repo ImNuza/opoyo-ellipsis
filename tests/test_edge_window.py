@@ -25,15 +25,17 @@ def _samples(n: int, hz: float = 50.0, t0: int = 1_000_000, node: str = "n1") ->
 
 
 def test_two_second_window_has_100_samples():
-    builder = WindowBuilder(window_s=2.0, hop_s=1.0, hz=50.0, room="Kitchen")
+    builder = WindowBuilder(
+        window_s=2.0, hop_s=1.0, hz=50.0, node_id="Phone 1", room=1
+    )
     window = None
     for sample in _samples(100, node="abc"):
         window = builder.push(sample) or window
     assert window is not None
     assert len(window.mag) == 100
     assert abs((window.t_end_ms - window.t_start_ms) - 2000) < 50
-    assert window.node_id == "abc"
-    assert window.room == "Kitchen"
+    assert window.node_id == "Phone 1"
+    assert window.room == 1
 
 
 def test_incomplete_buffer_returns_none():
@@ -46,13 +48,15 @@ def test_incomplete_buffer_returns_none():
 
 
 def test_hop_one_second_yields_two_windows_from_three_seconds():
-    builder = WindowBuilder(window_s=2.0, hop_s=1.0, hz=50.0, room="Bath")
+    builder = WindowBuilder(
+        window_s=2.0, hop_s=1.0, hz=50.0, node_id="Phone 2", room=2
+    )
     windows = []
     for sample in _samples(150, node="n9"):
         window = builder.push(sample)
         if window is not None:
             windows.append(window)
     assert len(windows) == 2
-    assert windows[0].node_id == "n9"
-    assert windows[0].room == "Bath"
-    assert windows[1].room == "Bath"
+    assert windows[0].node_id == "Phone 2"
+    assert windows[0].room == 2
+    assert windows[1].room == 2

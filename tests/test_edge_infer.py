@@ -7,8 +7,8 @@ from edge.infer import Classifier, FakeCnn, StubCnn
 def _window() -> SensorWindow:
     zeros = [0.0] * 100
     return SensorWindow(
-        node_id="n1",
-        room="Phone 1",
+        node_id="Phone 1",
+        room=1,
         t_start_ms=1000,
         t_end_ms=3000,
         hz=50.0,
@@ -25,8 +25,8 @@ def test_stub_returns_required_shape():
     assert isinstance(result, InferenceResult)
     assert result.inference_id
     assert result.timestamp == 3000
-    assert result.node_id == "n1"
-    assert result.room == "Phone 1"
+    assert result.node_id == "Phone 1"
+    assert result.room == 1
     assert result.is_fall is False
     assert result.confidence == 0.0
 

@@ -152,16 +152,17 @@ class Hub:
             },
         }
 
-    def _builder(self, node_id: str, room: str) -> WindowBuilder:
-        builder = self.windows.get(node_id)
+    def _builder(self, key: str, node: Node) -> WindowBuilder:
+        builder = self.windows.get(key)
         if builder is None:
             builder = WindowBuilder(
                 window_s=WINDOW_S,
                 hop_s=HOP_S,
                 hz=50.0,
-                room=room,
+                node_id=node.name,
+                room=node.slot,
             )
-            self.windows[node_id] = builder
+            self.windows[key] = builder
         return builder
 
     async def ingest(self, packet: dict[str, Any]) -> dict[str, Any] | None:
@@ -207,7 +208,9 @@ class Hub:
                     "db": combined["db"],
                 }
             )
-            window = self._builder(nid, node.name).push(sample, room=node.name)
+            window = self._builder(nid, node).push(
+                sample, node_id=node.name, room=node.slot
+            )
             if window is not None:
                 result = self.classifier.infer(window)
                 self.gate.handle(result)
@@ -295,6 +298,8 @@ def create_app(
     cloud_client: Any | None = None,
     log_path: Path | None = None,
     enable_udp: bool | None = None,
+    udp_host: str | None = None,
+    udp_port: int | None = None,
 ) -> FastAPI:
     store = InferenceLog(log_path or (DATA_DIR / "inference.jsonl"))
     client = cloud_client or HttpCloudClient(CLOUD_URL)
@@ -305,9 +310,12 @@ def create_app(
         store=store,
     )
     udp_on = os.environ.get("EDGE_ENABLE_UDP") if enable_udp is None else enable_udp
+    bind_host = UDP_HOST if udp_host is None else udp_host
+    bind_port = UDP_PORT if udp_port is None else udp_port
 
     app = FastAPI(title="OPOYO edge")
     app.state.hub = hub
+    app.state.udp_port = None
     if STATIC_DIR.exists():
         app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
@@ -350,13 +358,12 @@ def create_app(
         if not udp_on:
             return
         loop = asyncio.get_running_loop()
-        try:
-            await loop.create_datagram_endpoint(
-                SampleProtocol,
-                local_addr=(UDP_HOST, UDP_PORT),
-            )
-        except OSError:
-            return
+        transport, _protocol = await loop.create_datagram_endpoint(
+            SampleProtocol,
+            local_addr=(bind_host, bind_port),
+        )
+        sockname = transport.get_extra_info("sockname")
+        app.state.udp_port = int(sockname[1]) if sockname else bind_port
 
     return app
 

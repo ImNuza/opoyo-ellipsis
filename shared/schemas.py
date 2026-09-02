@@ -21,7 +21,7 @@ class SensorSample(BaseModel):
 
 class SensorWindow(BaseModel):
     node_id: str
-    room: str
+    room: int
     t_start_ms: int
     t_end_ms: int
     hz: float
@@ -36,7 +36,7 @@ class InferenceResult(BaseModel):
     inference_id: str
     timestamp: int
     node_id: str
-    room: str
+    room: int
     is_fall: bool
     confidence: float = Field(ge=0.0, le=1.0)
 
@@ -46,7 +46,7 @@ class FallEvent(BaseModel):
     inference_id: str
     timestamp: int
     node_id: str
-    room: str
+    room: int
     is_fall: Literal[True]
     confidence: float = Field(ge=0.0, le=1.0)
     threshold: float = Field(ge=0.0, le=1.0)
@@ -88,3 +88,16 @@ class EscalationCase(BaseModel):
     family_wait_started_at: float | None = None
     commands: list[EscalationCommand] = Field(default_factory=list)
     acks: list[AckEvent] = Field(default_factory=list)
+
+
+def fall_event_from_inference(result: InferenceResult, threshold: float) -> FallEvent:
+    return FallEvent(
+        event_id=result.inference_id,
+        inference_id=result.inference_id,
+        timestamp=result.timestamp,
+        node_id=result.node_id,
+        room=result.room,
+        is_fall=True,
+        confidence=result.confidence,
+        threshold=threshold,
+    )

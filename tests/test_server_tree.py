@@ -15,8 +15,8 @@ def _event() -> FallEvent:
         event_id="evt1",
         inference_id="evt1",
         timestamp=1735689602123,
-        node_id="n1",
-        room="Bathroom",
+        node_id="Phone 1",
+        room=1,
         is_fall=True,
         confidence=0.94,
         threshold=0.9,
@@ -40,7 +40,7 @@ def _tree() -> tuple[DecisionTree, FakeClock, FakeSender, FakeSender]:
 
 def test_fall_message_includes_room_and_confidence():
     text = fall_message(_event())
-    assert "Bathroom" in text
+    assert "Room 1" in text
     assert "0.94" in text
 
 
@@ -50,7 +50,7 @@ def test_ingest_dispatches_rung1():
     assert case.state == "rung1_dispatched"
     assert len(telegram.sent) == 1
     assert telegram.sent[0][0] == KIN
-    assert "Bathroom" in telegram.sent[0][1]
+    assert "Room 1" in telegram.sent[0][1]
     assert "0.94" in telegram.sent[0][1]
     assert twilio.sent == [(PHONE, telegram.sent[0][1])]
 
@@ -117,7 +117,7 @@ def test_no_family_at_t60_alerts_secondary():
     assert tree.cases[case.case_id].state == "secondary_alerted"
     assert len(telegram.sent) == 2
     assert telegram.sent[1][0] == SECONDARY
-    assert "Bathroom" in telegram.sent[1][1]
+    assert "Room 1" in telegram.sent[1][1]
 
 
 def test_secondary_taken_at_t90_skips_careline():

@@ -38,8 +38,8 @@ def test_inference_confidence_bounds_and_bool():
     ok = InferenceResult(
         inference_id="abc",
         timestamp=1,
-        node_id="n1",
-        room="Phone 1",
+        node_id="Phone 1",
+        room=1,
         is_fall=False,
         confidence=0.12,
     )
@@ -50,8 +50,8 @@ def test_inference_confidence_bounds_and_bool():
         InferenceResult(
             inference_id="abc",
             timestamp=1,
-            node_id="n1",
-            room="Phone 1",
+            node_id="Phone 1",
+            room=1,
             is_fall=True,
             confidence=1.2,
         )
@@ -63,8 +63,8 @@ def test_fall_event_requires_is_fall_true():
             event_id="e1",
             inference_id="e1",
             timestamp=1,
-            node_id="n1",
-            room="Bathroom",
+            node_id="Phone 1",
+            room=1,
             is_fall=False,  # type: ignore[arg-type]
             confidence=0.94,
             threshold=0.9,
@@ -75,8 +75,8 @@ def test_fall_event_from_inference_copies_fields():
     result = InferenceResult(
         inference_id="a1b2",
         timestamp=1735689602123,
-        node_id="c0a1",
-        room="Bathroom",
+        node_id="Phone 1",
+        room=1,
         is_fall=True,
         confidence=0.94,
     )

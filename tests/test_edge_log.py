@@ -10,8 +10,8 @@ def _row(i: int, is_fall: bool = False) -> InferenceResult:
     return InferenceResult(
         inference_id=f"id{i}",
         timestamp=1000 + i,
-        node_id="n1",
-        room="Phone 1",
+        node_id="Phone 1",
+        room=1,
         is_fall=is_fall,
         confidence=0.1 if not is_fall else 0.93,
     )

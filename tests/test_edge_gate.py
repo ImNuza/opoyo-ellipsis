@@ -11,8 +11,8 @@ def _result(is_fall: bool, confidence: float) -> InferenceResult:
     return InferenceResult(
         inference_id="inf1",
         timestamp=1735689602123,
-        node_id="n1",
-        room="Bathroom",
+        node_id="Phone 1",
+        room=1,
         is_fall=is_fall,
         confidence=confidence,
     )
@@ -45,7 +45,8 @@ def test_gate_posts_fall_event_with_threshold(tmp_path):
     assert body.is_fall is True
     assert body.threshold == 0.90
     assert body.confidence == 0.94
-    assert body.room == "Bathroom"
+    assert body.room == 1
+    assert body.node_id == "Phone 1"
     assert len(store.tail(5)) == 1
 
 
@@ -60,8 +61,8 @@ def test_runtime_threshold_change(tmp_path):
         InferenceResult(
             inference_id="inf2",
             timestamp=2,
-            node_id="n1",
-            room="Bathroom",
+            node_id="Phone 1",
+            room=1,
             is_fall=True,
             confidence=0.94,
         )

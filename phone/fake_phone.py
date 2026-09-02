@@ -96,6 +96,20 @@ def sample_stream(
     return packets
 
 
+def send_udp(packets: list[dict], host: str, port: int) -> int:
+    """Send packets as real UDP datagrams, the way a phone would."""
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sent = 0
+    try:
+        for packet in packets:
+            wire = {k: v for k, v in packet.items() if k not in {"_nid", "from"}}
+            sock.sendto(json.dumps(wire).encode("utf-8"), (host, port))
+            sent += 1
+    finally:
+        sock.close()
+    return sent
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--host", default="127.0.0.1")

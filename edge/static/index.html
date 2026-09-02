@@ -391,7 +391,7 @@
         <p>A phone is not identified by MAC address. iOS will not give that to the app. The stable key is a UUID stored on the phone. The card shows the model, a four-character short id, and a slot name <code>Phone 1</code> … <code>Phone 5</code>.</p>
         <h2>Edge inference (this process, not the browser)</h2>
         <p>UDP packets land here. A 2 s window of magnitude is passed to a 1D CNN stub in <code>edge/infer.py</code>. The stub returns <code>timestamp, is_fall, confidence</code>. Every result is logged. The cloud is contacted only when <code>is_fall</code> and confidence ≥ <code>ESCALATE_MIN_CONFIDENCE</code> (0.90 in <code>edge/app.py</code>).</p>
-        <p><code>InferenceResult</code>: <code>inference_id, timestamp, node_id, room, is_fall, confidence</code></p>
+        <p><code>InferenceResult</code>: <code>inference_id, timestamp, node_id</code> (<code>Phone 1</code> … <code>Phone 5</code>), <code>room</code> (1–5), <code>is_fall, confidence</code></p>
         <p><code>FallEvent</code> (cloud only): same fields plus <code>threshold</code>, and <code>is_fall</code> is always true.</p>
         <h2>Telegram</h2>
         <p>The cloud process owns the escalation ladder. Telegram is rung 1 at t+0 after a gated fall. Twilio, secondary contact, and CareLine are stubs.</p>

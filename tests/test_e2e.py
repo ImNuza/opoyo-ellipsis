@@ -51,7 +51,8 @@ def test_fake_phones_ingest_and_log(tmp_path: Path):
     rows = store.tail(50)
     assert len(rows) >= 2
     by_node = {row.node_id for row in rows}
-    assert by_node == {PHONE_A, PHONE_B}
+    assert by_node == {"Phone 1", "Phone 2"}
+    assert {row.room for row in rows} == {1, 2}
     assert all(row.is_fall is False for row in rows)
     assert all(row.confidence == 0.0 for row in rows)
     assert cloud.posted == []
@@ -84,8 +85,8 @@ def test_fake_phone_over_threshold_triggers_telegram(tmp_path: Path):
     assert event.is_fall is True
     assert event.threshold == 0.90
     assert event.confidence == 0.95
-    assert event.room == "Phone 1"
-    assert event.node_id == PHONE_A
+    assert event.room == 1
+    assert event.node_id == "Phone 1"
 
     telegram = FakeSender()
     twilio = FakeSender()
@@ -107,6 +108,6 @@ def test_fake_phone_over_threshold_triggers_telegram(tmp_path: Path):
     dest, text = telegram.sent[0]
     assert dest == KIN
     assert "OPOYO: fall" in text
-    assert "Phone 1" in text
+    assert "Room 1" in text
     assert "0.95" in text
     assert twilio.sent == [(SENIOR, text)]
