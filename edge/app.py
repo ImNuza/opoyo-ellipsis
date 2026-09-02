@@ -10,15 +10,15 @@ from typing import Any
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, ValidationError
+from pydantic import ValidationError
 
 from edge.gate import EscalationGate, HttpCloudClient
 from edge.infer import Classifier, StubCnn
 from edge.log import InferenceLog
 from edge.window import WindowBuilder
-from shared.schemas import EdgeConfig, SensorSample
+from shared.schemas import SensorSample
 
 ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(ROOT / ".env")
@@ -27,11 +27,14 @@ UDP_HOST = "0.0.0.0"
 UDP_PORT = 9000
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 DATA_DIR = Path(__file__).resolve().parent / "data"
-NAMES_PATH = DATA_DIR / "names.json"
 MAX_NODES = 5
 MAX_HISTORY = 220
 LIVE_S = 2.5
 RATE_S = 1.5
+ESCALATE_MIN_CONFIDENCE = 0.90
+WINDOW_S = 2.0
+HOP_S = 1.0
+CLOUD_URL = "http://127.0.0.1:8001"
 
 
 def _num(packet: dict[str, Any], key: str, default: float = 0.0) -> float:
@@ -51,20 +54,12 @@ def _node_id(packet: dict[str, Any], addr: tuple[str, int]) -> str:
     return addr[0]
 
 
-def default_edge_config() -> EdgeConfig:
-    return EdgeConfig(
-        escalate_min_confidence=os.environ.get("EDGE_ESCALATE_MIN_CONFIDENCE"),
-        cloud_url=os.environ.get("EDGE_CLOUD_URL"),
-    )
-
-
 class Node:
     def __init__(self, node_id: str, slot: int, model: str, short: str) -> None:
         self.id = node_id
         self.slot = slot
         self.model = model
         self.short = short
-        self.name_override: str | None = None
         self.from_addr = ""
         self.latest: dict[str, Any] | None = None
         self.history: deque[dict[str, Any]] = deque(maxlen=MAX_HISTORY)
@@ -73,8 +68,6 @@ class Node:
 
     @property
     def name(self) -> str:
-        if self.name_override:
-            return self.name_override
         return f"Phone {self.slot}"
 
     def live(self, now: float) -> bool:
@@ -115,12 +108,10 @@ class Node:
 class Hub:
     def __init__(
         self,
-        cfg: EdgeConfig,
         classifier: Classifier,
         gate: EscalationGate,
         store: InferenceLog,
     ) -> None:
-        self.cfg = cfg
         self.classifier = classifier
         self.gate = gate
         self.store = store
@@ -131,23 +122,7 @@ class Hub:
         self.dropped = 0
         self.packets = 0
         self.lock = asyncio.Lock()
-        self.names: dict[str, str] = {}
         self.latest_inference: dict[str, Any] | None = None
-        self._load_names()
-
-    def _load_names(self) -> None:
-        if not NAMES_PATH.exists():
-            return
-        try:
-            data = json.loads(NAMES_PATH.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            return
-        if isinstance(data, dict):
-            self.names = {str(k): str(v) for k, v in data.items() if str(v).strip()}
-
-    def _save_names(self) -> None:
-        DATA_DIR.mkdir(parents=True, exist_ok=True)
-        NAMES_PATH.write_text(json.dumps(self.names, indent=2), encoding="utf-8")
 
     def _combined(self, now: float) -> dict[str, Any]:
         live = [n for n in self.nodes.values() if n.live(now) and n.latest]
@@ -169,15 +144,20 @@ class Hub:
             "k": "inference",
             "latest": self.latest_inference,
             "log": [row.model_dump() for row in self.store.tail(50)],
-            "cfg": self.cfg.model_dump(),
+            "cfg": {
+                "escalate_min_confidence": ESCALATE_MIN_CONFIDENCE,
+                "window_s": WINDOW_S,
+                "hop_s": HOP_S,
+                "cloud_url": CLOUD_URL,
+            },
         }
 
     def _builder(self, node_id: str, room: str) -> WindowBuilder:
         builder = self.windows.get(node_id)
         if builder is None:
             builder = WindowBuilder(
-                window_s=self.cfg.window_s,
-                hop_s=self.cfg.hop_s,
+                window_s=WINDOW_S,
+                hop_s=HOP_S,
                 hz=50.0,
                 room=room,
             )
@@ -209,9 +189,6 @@ class Hub:
                     return None
                 slot = len(self.nodes) + 1
                 node = Node(nid, slot, model, short)
-                override = self.names.get(nid)
-                if override:
-                    node.name_override = override
                 self.nodes[nid] = node
             node.model = model
             node.short = short
@@ -303,45 +280,6 @@ class Hub:
                 "inference": self.inference_public(),
             }
 
-    async def rename(self, node_id: str, name: str) -> dict[str, Any] | None:
-        cleaned = name.strip()[:32]
-        async with self.lock:
-            node = self.nodes.get(node_id)
-            if node is None:
-                return None
-            if cleaned and cleaned.lower() != f"phone {node.slot}".lower():
-                node.name_override = cleaned
-                self.names[node_id] = cleaned
-            else:
-                node.name_override = None
-                self.names.pop(node_id, None)
-            self._save_names()
-            now = time.time()
-            public = node.public(now)
-        return public
-
-    async def set_config(self, updates: dict[str, Any]) -> dict[str, Any]:
-        async with self.lock:
-            current = self.cfg.model_dump()
-            current.update({k: v for k, v in updates.items() if v is not None})
-            self.cfg = EdgeConfig.model_validate(current)
-            self.gate.threshold = self.cfg.escalate_min_confidence
-            if hasattr(self.gate.client, "base_url") and updates.get("cloud_url"):
-                self.gate.client.base_url = self.cfg.cloud_url.rstrip("/")
-            payload = self.inference_public()
-            clients = list(self.clients)
-        stale: list[WebSocket] = []
-        for ws in clients:
-            try:
-                await ws.send_json(payload)
-            except Exception:
-                stale.append(ws)
-        if stale:
-            async with self.lock:
-                for ws in stale:
-                    self.clients.discard(ws)
-        return payload
-
     async def add(self, ws: WebSocket) -> None:
         async with self.lock:
             self.clients.add(ws)
@@ -351,31 +289,17 @@ class Hub:
             self.clients.discard(ws)
 
 
-class RenameBody(BaseModel):
-    name: str = ""
-
-
-class EdgeConfigBody(BaseModel):
-    escalate_min_confidence: float | None = None
-    window_s: float | None = None
-    hop_s: float | None = None
-    cloud_url: str | None = None
-
-
 def create_app(
     *,
     classifier: Classifier | None = None,
     cloud_client: Any | None = None,
     log_path: Path | None = None,
     enable_udp: bool | None = None,
-    cfg: EdgeConfig | None = None,
 ) -> FastAPI:
-    config = cfg or default_edge_config()
     store = InferenceLog(log_path or (DATA_DIR / "inference.jsonl"))
-    client = cloud_client or HttpCloudClient(config.cloud_url)
-    gate = EscalationGate(threshold=config.escalate_min_confidence, client=client, store=store)
+    client = cloud_client or HttpCloudClient(CLOUD_URL)
+    gate = EscalationGate(threshold=ESCALATE_MIN_CONFIDENCE, client=client, store=store)
     hub = Hub(
-        cfg=config,
         classifier=classifier or StubCnn(),
         gate=gate,
         store=store,
@@ -408,28 +332,6 @@ def create_app(
     async def state() -> dict[str, Any]:
         return await hub.snapshot()
 
-    @app.post("/api/phones/{node_id}/name")
-    async def rename_phone(node_id: str, body: RenameBody) -> JSONResponse:
-        public = await hub.rename(node_id, body.name)
-        if public is None:
-            return JSONResponse({"error": "unknown phone"}, status_code=404)
-        return JSONResponse(public)
-
-    @app.post("/api/edge/config")
-    async def edge_config(body: EdgeConfigBody) -> dict[str, Any]:
-        updates: dict[str, Any] = {}
-        if body.escalate_min_confidence is not None:
-            updates["escalate_min_confidence"] = min(
-                1.0, max(0.0, float(body.escalate_min_confidence))
-            )
-        if body.window_s is not None:
-            updates["window_s"] = float(body.window_s)
-        if body.hop_s is not None:
-            updates["hop_s"] = float(body.hop_s)
-        if body.cloud_url is not None:
-            updates["cloud_url"] = body.cloud_url.strip()
-        return await hub.set_config(updates)
-
     @app.websocket("/ws")
     async def ws_feed(ws: WebSocket) -> None:
         await ws.accept()
@@ -458,8 +360,3 @@ def create_app(
 
     return app
 
-
-def __getattr__(name: str) -> FastAPI:
-    if name == "app":
-        return create_app()
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

@@ -51,7 +51,16 @@ class EscalationGate:
             append(result)
         # Check if the result should be escalated based on the threshold
         if bool(result.is_fall) and result.confidence >= self.threshold:
-            event = fall_event_from_inference(result, self.threshold)
+            event = FallEvent(
+                event_id=result.inference_id,
+                inference_id=result.inference_id,
+                timestamp=result.timestamp,
+                node_id=result.node_id,
+                room=result.room,
+                is_fall=True,
+                confidence=result.confidence,
+                threshold=self.threshold,
+            )
             self.client.post(event)
             return event
         return None

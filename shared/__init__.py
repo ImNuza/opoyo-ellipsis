@@ -1,6 +1,5 @@
 from shared.schemas import (
     AckEvent,
-    EdgeConfig,
     EscalationCase,
     EscalationCommand,
     FallEvent,
@@ -12,7 +11,6 @@ from shared.schemas import (
 
 __all__ = [
     "AckEvent",
-    "EdgeConfig",
     "EscalationCase",
     "EscalationCommand",
     "FallEvent",

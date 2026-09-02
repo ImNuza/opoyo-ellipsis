@@ -52,13 +52,6 @@ class FallEvent(BaseModel):
     threshold: float = Field(ge=0.0, le=1.0)
 
 
-class EdgeConfig(BaseModel):
-    escalate_min_confidence: float = Field(default=0.90, ge=0.0, le=1.0)
-    window_s: float = 2.0
-    hop_s: float = 1.0
-    cloud_url: str = "http://127.0.0.1:8001"
-
-
 AckActor = Literal["senior", "family", "secondary", "careline"]
 AckOutcome = Literal["fine", "not_fine", "no_answer", "taken"]
 EscalationRung = Literal["family_telegram", "senior_call", "secondary", "careline"]
@@ -95,16 +88,3 @@ class EscalationCase(BaseModel):
     family_wait_started_at: float | None = None
     commands: list[EscalationCommand] = Field(default_factory=list)
     acks: list[AckEvent] = Field(default_factory=list)
-
-
-def fall_event_from_inference(result: InferenceResult, threshold: float) -> FallEvent:
-    return FallEvent(
-        event_id=result.inference_id,
-        inference_id=result.inference_id,
-        timestamp=result.timestamp,
-        node_id=result.node_id,
-        room=result.room,
-        is_fall=True,
-        confidence=result.confidence,
-        threshold=threshold,
-    )

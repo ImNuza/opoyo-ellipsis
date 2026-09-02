@@ -10,7 +10,7 @@ The production node is a piezo puck bonded to the slab. This build uses iPhones 
 2. Packets go over UDP JSON to the edge (`v, id, model, t, ax, ay, az, mag, db`).
 3. Edge FastAPI listens on UDP 9000 and shows phones at http://127.0.0.1:8000
 4. `edge/infer.py` `StubCnn.infer` returns `{timestamp, is_fall, confidence}`. Every result is appended to `edge/data/inference.jsonl`.
-5. Edge POSTs a `FallEvent` to the cloud only when `is_fall` and `confidence >= EDGE_ESCALATE_MIN_CONFIDENCE` (required in `.env`, also on the dashboard).
+5. Edge POSTs a `FallEvent` to the cloud only when `is_fall` and `confidence >= ESCALATE_MIN_CONFIDENCE` (`0.90` in `edge/app.py`).
 6. Cloud FastAPI on http://127.0.0.1:8001 runs Figure A5: Telegram family + stub senior call at t+0, family wait 60 s, secondary stub, CareLine stub at t+180.
 
 Each phone carries a UUID created on first launch. Combined traces use max magnitude and max dB. Axes stay per phone. Raw vibration never leaves the edge process.

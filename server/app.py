@@ -98,8 +98,3 @@ def create_app(tree: DecisionTree | None = None) -> FastAPI:
 
     return app
 
-
-def __getattr__(name: str) -> FastAPI:
-    if name == "app":
-        return create_app()
-    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

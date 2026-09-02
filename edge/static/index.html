@@ -185,16 +185,6 @@
       display: grid;
       gap: 2px;
     }
-    .card input {
-      width: 100%;
-      min-height: 40px;
-      border: var(--rule) solid var(--color-line);
-      background: var(--color-paper);
-      color: var(--color-ink);
-      font-family: var(--font-body);
-      font-size: var(--text-sm);
-      padding: 8px 10px;
-    }
     footer {
       display: flex;
       justify-content: space-between;
@@ -262,57 +252,6 @@
       padding: 8px 10px;
       border-bottom: var(--rule) solid var(--color-line);
     }
-    .tune {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: end;
-      gap: var(--space-3);
-      margin: 0 0 var(--space-5);
-      padding: 12px 0 0;
-    }
-    .tune label {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      font-size: var(--text-xs);
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: var(--color-muted);
-    }
-    .tune input {
-      width: 7rem;
-      min-height: 40px;
-      border: var(--rule) solid var(--color-line);
-      background: var(--color-resist);
-      color: var(--color-ink);
-      font-family: var(--font-mono);
-      font-size: var(--text-sm);
-      padding: 8px 10px;
-      pointer-events: auto;
-    }
-    .tune input[type="checkbox"] {
-      width: 1.25rem;
-      min-height: 1.25rem;
-      accent-color: var(--color-navy);
-      cursor: pointer;
-    }
-    .tune label.check {
-      flex-direction: row;
-      align-items: center;
-      gap: 8px;
-      min-height: 40px;
-      cursor: pointer;
-    }
-    .tune button {
-      pointer-events: auto;
-      cursor: pointer;
-    }
-    .tune #tuneNote {
-      font-family: var(--font-mono);
-      font-size: var(--text-sm);
-      color: var(--color-muted);
-      max-width: 42ch;
-    }
     .back { margin-bottom: var(--space-4); }
     .detail-meta {
       display: grid;
@@ -372,11 +311,6 @@
       <section id="home" class="page is-on">
         <div class="banner" id="banner" data-state="quiet">
           <strong id="bannerText">No inference yet</strong>
-        </div>
-        <div class="tune">
-          <label>Escalate min confidence<input id="confThresh" type="number" min="0" max="1" step="0.01" value="0.90"></label>
-          <button type="button" id="applyTune">Apply</button>
-          <span id="tuneNote">Cloud only if fall and confidence ≥ threshold.</span>
         </div>
         <h2>Combined floor</h2>
         <p class="note" id="comboNote">Max magnitude and max sound across live phones. x, y, z stay per phone.</p>
@@ -454,9 +388,9 @@
         <p><code>dB = 20 · log10(max(rms, 1e-8))</code></p>
         <p>Combined magnitude at a tick is the maximum <code>mag</code> among phones that sent a packet in the last 2.5 s. Combined sound is the maximum dB. Axes are not averaged. Each phone has its own heading.</p>
         <h2>Identity</h2>
-        <p>A phone is not identified by MAC address. iOS will not give that to the app. The stable key is a UUID stored on the phone. The card also shows the model and a four-character short id. Rename on the dashboard is stored on the Mac against that UUID, so quit and rejoin keep the name.</p>
+        <p>A phone is not identified by MAC address. iOS will not give that to the app. The stable key is a UUID stored on the phone. The card shows the model, a four-character short id, and a slot name <code>Phone 1</code> … <code>Phone 5</code>.</p>
         <h2>Edge inference (this process, not the browser)</h2>
-        <p>UDP packets land here. A 2 s window of magnitude is passed to a 1D CNN stub in <code>edge/infer.py</code>. The stub returns <code>timestamp, is_fall, confidence</code>. Every result is logged. The cloud is contacted only when <code>is_fall</code> and confidence ≥ <code>EDGE_ESCALATE_MIN_CONFIDENCE</code> (required in <code>.env</code>).</p>
+        <p>UDP packets land here. A 2 s window of magnitude is passed to a 1D CNN stub in <code>edge/infer.py</code>. The stub returns <code>timestamp, is_fall, confidence</code>. Every result is logged. The cloud is contacted only when <code>is_fall</code> and confidence ≥ <code>ESCALATE_MIN_CONFIDENCE</code> (0.90 in <code>edge/app.py</code>).</p>
         <p><code>InferenceResult</code>: <code>inference_id, timestamp, node_id, room, is_fall, confidence</code></p>
         <p><code>FallEvent</code> (cloud only): same fields plus <code>threshold</code>, and <code>is_fall</code> is always true.</p>
         <h2>Telegram</h2>
@@ -476,7 +410,7 @@
           <li>Escalate threshold is calibrated in the field. Default 0.90.</li>
         </ul>
         <h2>Tweak</h2>
-        <p><code>EDGE_ESCALATE_MIN_CONFIDENCE</code>, <code>EDGE_CLOUD_URL</code>. Threshold can also be applied on this page without restart.</p>
+        <p>Threshold, window, hop, and cloud URL are constants in <code>edge/app.py</code>. Restart the edge process after changing them.</p>
         <p>Code: <code>edge/infer.py</code> (stub), <code>edge/gate.py</code> (threshold), <code>server/tree.py</code> (ladder), <code>server/notify.py</code> (Telegram copy).</p>
         <h2>Not done yet</h2>
         <ul>
@@ -506,8 +440,6 @@
     let combined = { mag: 0, db: -120, live: 0, hz: 0, packets: 0 };
     let lastRecv = 0;
     let inference = { latest: null, log: [], cfg: { escalate_min_confidence: 0.9 } };
-    let tuneDirty = false;
-    let tuneLocked = false;
 
     const pauseBtn = document.getElementById("pause");
     const themeBtn = document.getElementById("theme");
@@ -516,9 +448,6 @@
     const comboNote = document.getElementById("comboNote");
     const bannerEl = document.getElementById("banner");
     const bannerText = document.getElementById("bannerText");
-    const confThreshEl = document.getElementById("confThresh");
-    const applyTune = document.getElementById("applyTune");
-    const tuneNote = document.getElementById("tuneNote");
     const inferLogBody = document.querySelector("#inferLog tbody");
 
     function ink() {
@@ -664,26 +593,11 @@
               ax ${fmt(slot.ax, 3)} g · ay ${fmt(slot.ay, 3)} g · az ${fmt(slot.az, 3)} g<br>
               ${fmt(slot.hz, 1)} Hz · ${slot.packets || 0} pkt
             </div>
-            <input data-rename="${escapeHtml(slot.id)}" value="${escapeHtml(slot.name || "")}" aria-label="Rename phone">
             <a class="btn" href="#/phone/${encodeURIComponent(slot.id)}">Open</a>
           </article>`
         );
       }
-      const typing = document.activeElement && document.activeElement.getAttribute && document.activeElement.getAttribute("data-rename");
-      if (typing) return;
       cardsEl.innerHTML = parts.join("");
-      cardsEl.querySelectorAll("input[data-rename]").forEach((el) => {
-        el.addEventListener("change", async () => {
-          const id = el.getAttribute("data-rename");
-          try {
-            await fetch("/api/phones/" + encodeURIComponent(id) + "/name", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ name: el.value })
-            });
-          } catch (e) {}
-        });
-      });
     }
 
     function escapeHtml(s) {
@@ -717,15 +631,6 @@
       draw(document.getElementById("cDb"), buf.db, -80, 0, tan(), "dB");
     }
 
-    function fillTune(cfg, force) {
-      if (!cfg) return;
-      if (!force && (tuneDirty || tuneLocked)) return;
-      if (typeof cfg.escalate_min_confidence === "number") {
-        confThreshEl.value = String(cfg.escalate_min_confidence);
-      }
-      tuneLocked = true;
-    }
-
     function applyInference(d) {
       if (!d) return;
       inference = d;
@@ -742,7 +647,6 @@
       }
       const thresh = d.cfg && d.cfg.escalate_min_confidence;
       footEl.textContent = "Dropped extras: " + dropped + ". Threshold: " + (typeof thresh === "number" ? thresh.toFixed(2) : "-") + ".";
-      fillTune(d.cfg || {});
       inferLogBody.innerHTML = "";
       (d.log || []).slice().reverse().forEach((row) => {
         const tr = document.createElement("tr");
@@ -751,30 +655,6 @@
         inferLogBody.appendChild(tr);
       });
     }
-
-    confThreshEl.addEventListener("pointerdown", () => { tuneDirty = true; });
-    confThreshEl.addEventListener("input", () => { tuneDirty = true; });
-    applyTune.addEventListener("pointerdown", () => { tuneDirty = true; });
-
-    applyTune.addEventListener("click", async () => {
-      try {
-        const r = await fetch("/api/edge/config", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            escalate_min_confidence: Number(confThreshEl.value)
-          })
-        });
-        const d = await r.json();
-        if (!r.ok) {
-          tuneNote.textContent = "Apply failed";
-          return;
-        }
-        tuneDirty = false;
-        applyInference(d);
-        tuneNote.textContent = "Threshold " + Number(d.cfg.escalate_min_confidence).toFixed(2);
-      } catch (e) {}
-    });
 
     function applyState(s) {
       if (!s) return;
