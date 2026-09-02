@@ -118,7 +118,10 @@ final class SensorSession {
         }
 
         if streamUDP {
-            client.connect(host: host, port: port)
+            guard client.connect(host: host, port: port) else {
+                status = "Bad Mac address. Use dotted IPv4, not a name."
+                return
+            }
         }
         motion.deviceMotionUpdateInterval = 1.0 / 50.0
         motion.startDeviceMotionUpdates(using: .xArbitraryZVertical, to: .main) { [weak self] data, error in

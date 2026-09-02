@@ -1,10 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 88 64" fill="none" aria-hidden="true">
-  <!-- Outer tan lobes -->
-  <path fill="#C4A574" d="M12 34c0-12 8-22 20-24 4-8 16-12 26-6 10-6 24-2 26 10 8 2 16 12 14 22-2 12-14 20-26 18-6 8-18 10-28 4-10 4-22-2-26-12-4-4-6-8-6-12z"/>
-  <!-- Middle teal -->
-  <path fill="#3D7A7A" d="M22 36c0-9 6-16 15-18 3-6 12-9 20-4 8-5 18-2 20 8 6 1 12 9 10 16-2 9-11 15-20 13-5 6-14 8-21 3-8 3-17-2-20-9-2-3-4-6-4-9z"/>
-  <!-- Inner navy -->
-  <path fill="#1E3A5F" d="M32 38c0-6 4-11 11-12 2-4 8-6 14-3 6-3 13-1 14 6 4 1 8 6 7 11-1 6-8 10-14 9-3 4-10 5-15 2-6 2-12-1-14-6-1-2-3-4-3-7z"/>
-  <circle cx="50" cy="38" r="5.2" fill="#FAF7F1"/>
-  <rect x="10" y="56" width="68" height="1.6" rx="0.8" fill="#1E3A5F"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="OPOYO">
+  <rect width="1024" height="1024" fill="#FDF9EF"/>
+  <g transform="translate(512 512)">
+    <circle r="318" fill="none" stroke="#C4A05A" stroke-width="22"/>
+    <g>
+      <ellipse cx="0" cy="-118" rx="70" ry="148" fill="#1A365D" transform="rotate(-45)"/>
+      <ellipse cx="0" cy="-118" rx="70" ry="148" fill="#4E918A" transform="rotate(45)"/>
+      <ellipse cx="0" cy="-118" rx="70" ry="148" fill="#1A365D" transform="rotate(135)"/>
+      <ellipse cx="0" cy="-118" rx="70" ry="148" fill="#4E918A" transform="rotate(-135)"/>
+    </g>
+    <circle r="42" fill="#FDF9EF"/>
+  </g>
 </svg>

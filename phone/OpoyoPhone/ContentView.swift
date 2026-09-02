@@ -63,7 +63,7 @@ struct ContentView: View {
                 .overlay(cloth.header.opacity(0.72))
             HStack(alignment: .center, spacing: 10) {
                 LogoMark()
-                    .frame(width: 36, height: 26)
+                    .frame(width: 36, height: 36)
                 VStack(alignment: .leading, spacing: 1) {
                     Text("OPOYO")
                         .font(Typeface.display(18))
@@ -101,10 +101,12 @@ struct ContentView: View {
         .padding(.vertical, 8)
         .overlay(
             RoundedRectangle(cornerRadius: 2, style: .continuous)
-                .stroke(streaming ? cloth.tan : cloth.onHeader.opacity(0.35), lineWidth: 1)
+                .stroke(live ? cloth.tan : cloth.onHeader.opacity(0.35), lineWidth: 1)
         )
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(streaming ? "Streaming" : "Idle")
+        .accessibilityLabel(
+            session.isCapturing ? "Recording" : (session.isRunning ? "Streaming" : "Idle")
+        )
     }
 
     private var collect: some View {

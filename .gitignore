@@ -26,3 +26,6 @@ android/local.properties
 android/.gradle/
 android/app/build/
 android/build/
+phone/DerivedData/
+phone/**/xcuserdata/
+server/data/
