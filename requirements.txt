@@ -10,3 +10,8 @@ scipy>=1.11
 scikit-learn>=1.4
 pyyaml>=6.0
 joblib>=1.3
+
+# the live FusionCnn needs these; without them load_runtime() silently
+# degrades to the vibration-only head (AP 0.853 -> 0.397)
+tensorflow-cpu>=2.16
+tensorflow-hub>=0.16

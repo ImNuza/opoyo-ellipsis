@@ -7,6 +7,7 @@ import numpy as np
 from edge.app import Hub
 from edge.gate import EscalationGate, RecordingCloudClient
 from edge.infer import FakeCnn
+from shared.schemas import InferenceResult, SensorWindow
 from edge.log import InferenceLog
 from phone.fake_phone import make_packet
 from shared.pcm import pack_frame, unpack_frame
@@ -113,3 +114,40 @@ def test_join_uses_phone_t_not_ingest_order(tmp_path):
     assert got["coverage"] >= 0.95
     span_ms = got["t_end_ms"] - got["t_start_ms"]
     assert abs(got["samples"] - span_ms * 16) <= 16
+
+
+class _CaptureCnn:
+    def __init__(self) -> None:
+        self.windows: list[SensorWindow] = []
+
+    def infer(self, window: SensorWindow) -> InferenceResult:
+        self.windows.append(window)
+        return InferenceResult(
+            inference_id="cap",
+            timestamp=window.t_end_ms,
+            node_id=window.node_id,
+            room=window.room,
+            is_fall=False,
+            confidence=0.0,
+        )
+
+
+def test_join_attaches_pcm_to_window(tmp_path):
+    store = InferenceLog(tmp_path / "inference.jsonl")
+    gate = EscalationGate(threshold=0.90, client=RecordingCloudClient(), store=store)
+    clf = _CaptureCnn()
+    hub = Hub(classifier=clf, gate=gate, store=store)
+    packets = _json_samples(PHONE_A)
+    t_end = T0 + (N - 1) * DT
+    frames = _pcm_frames(PHONE_A, T0, t_end + DT)
+
+    async def run() -> None:
+        await _ingest_pcm(hub, frames)
+        await _ingest_json(hub, packets)
+
+    asyncio.run(run())
+    assert clf.windows
+    pcm = clf.windows[0].pcm
+    assert len(pcm) > 1000
+    assert clf.windows[0].pcm_hz == 16000.0
+    assert max(abs(x) for x in pcm) <= 1.0 + 1e-6

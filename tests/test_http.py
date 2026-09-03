@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi.testclient import TestClient
 
 from edge.app import create_app as create_edge
+from edge.infer import StubCnn
 from server.app import create_app as create_cloud
 from server.decision_tree import DecisionTree
 from shared.schemas import AckEvent, FallEvent
@@ -57,7 +58,7 @@ def test_cloud_ack_moves_state():
 
 
 def test_edge_has_no_raw_sample_cloud_dump():
-    app = create_edge(enable_udp=False)
+    app = create_edge(enable_udp=False, classifier=StubCnn())
     paths = {getattr(route, "path", "") for route in app.routes}
     forbidden = [
         p for p in paths if "sample" in p.lower() and "cloud" in p.lower()

@@ -28,7 +28,11 @@ class SensorSample(BaseModel):
 
 
 class SensorWindow(BaseModel):
-    """2 s / 50 Hz slice for the classifier. node_id is Phone N; room is slot 1–5."""
+    """2 s / 50 Hz slice for the classifier. node_id is Phone N; room is slot 1–5.
+
+    pcm is the time-aligned 16 kHz clip from PcmRing, in [-1, 1]. Empty if the
+    WAV channel missed this window (classifier then uses mag only).
+    """
 
     node_id: str
     room: int
@@ -40,6 +44,8 @@ class SensorWindow(BaseModel):
     ay: list[float]
     az: list[float]
     db: list[float]
+    pcm: list[float] = Field(default_factory=list)
+    pcm_hz: float = 16000.0
 
 
 class InferenceResult(BaseModel):

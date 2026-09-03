@@ -4,14 +4,21 @@ __pycache__/
 *.pyc
 .env
 data/*
+!data/takes/
+!data/takes/**
+data/takes-legacy-nowav/
 !data/metadata.csv
 !data/samples/
 !data/samples/**
 !data/calibrate/
 !data/calibrate/.gitkeep
 models/*.joblib
+!models/mag_head.joblib
+!models/yamnet_head.joblib
+!models/fuse_head.joblib
 models/*.npz
-models/tfhub/
+!models/tfhub/
+!models/tfhub/**
 .DS_Store
 .pytest_cache/
 docs/*.aux
@@ -35,3 +42,6 @@ xcuserdata/
 server/data/
 edge/data/
 models/
+
+# pitch deck, animations and rendered media: not pipeline, and 28 MB
+pitch/

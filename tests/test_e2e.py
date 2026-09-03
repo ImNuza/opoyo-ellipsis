@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 
 from edge.app import create_app as create_edge
 from edge.gate import RecordingCloudClient
-from edge.infer import FakeCnn
+from edge.infer import FakeCnn, StubCnn
 from edge.log import InferenceLog
 from phone.fake_phone import sample_stream
 from server.app import create_app as create_cloud
@@ -32,7 +32,7 @@ def _edge(*, tmp_path: Path, cloud_client, classifier=None):
         enable_udp=False,
         log_path=tmp_path / "inference.jsonl",
         cloud_client=cloud_client,
-        classifier=classifier,
+        classifier=StubCnn() if classifier is None else classifier,
     )
 
 

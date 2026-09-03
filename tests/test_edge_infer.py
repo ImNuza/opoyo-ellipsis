@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import pytest
+
 from shared.schemas import InferenceResult, SensorWindow
-from edge.infer import Classifier, FakeCnn, StubCnn
+from edge.infer import Classifier, FakeCnn, FusionCnn, MODELS, StubCnn, load_runtime
 
 
 def _window() -> SensorWindow:
@@ -41,3 +43,18 @@ def test_fake_cnn_is_swappable() -> None:
     assert result.is_fall is True
     assert result.confidence == 0.95
     assert result.timestamp == 3000
+
+
+@pytest.mark.skipif(not (MODELS / "fuse_head.joblib").exists(), reason="no trained heads")
+def test_fusion_zero_mag_without_pcm_does_not_raise():
+    result = FusionCnn().infer(_window())
+    assert isinstance(result, InferenceResult)
+    assert 0.0 <= result.confidence <= 1.0
+    assert result.node_id == "Phone 1"
+    assert result.timestamp == 3000
+
+
+@pytest.mark.skipif(not (MODELS / "fuse_head.joblib").exists(), reason="no trained heads")
+def test_load_runtime_returns_fusion_when_heads_exist():
+    clf = load_runtime()
+    assert isinstance(clf, FusionCnn)

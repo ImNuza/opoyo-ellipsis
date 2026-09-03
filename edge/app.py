@@ -21,7 +21,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import ValidationError
 
 from edge.gate import EscalationGate, HttpCloudClient
-from edge.infer import Classifier, StubCnn
+from edge.infer import Classifier, load_runtime
 from edge.log import InferenceLog
 from edge.pcm_ring import PcmRing
 from edge.window import WindowBuilder
@@ -234,7 +234,9 @@ class Hub:
                 sample, node_id=node.name, room=node.slot
             )
             if window is not None:
-                self._join_pcm(nid, window.t_start_ms, window.t_end_ms)
+                clip, _coverage = self._join_pcm(nid, window.t_start_ms, window.t_end_ms)
+                pcm = clip.tolist() if hasattr(clip, "tolist") else list(clip)
+                window = window.model_copy(update={"pcm": pcm, "pcm_hz": 16000.0})
                 result = self.classifier.infer(window)
                 self.gate.handle(result)
                 self.latest_inference = result.model_dump()
@@ -314,7 +316,8 @@ class Hub:
                 "inference": self.inference_public(),
             }
 
-    def _join_pcm(self, nid: str, t_start_ms: int, t_end_ms: int) -> None:
+    def _join_pcm(self, nid: str, t_start_ms: int, t_end_ms: int):
+        """Slice PCM for this window. Returns (clip in [-1,1], coverage)."""
         ring = self.pcm_rings.get(nid)
         if ring is None:
             self.last_pcm[nid] = {
@@ -323,7 +326,7 @@ class Hub:
                 "t_start_ms": t_start_ms,
                 "t_end_ms": t_end_ms,
             }
-            return
+            return [], 0.0
         clip, coverage = ring.slice_ms(t_start_ms, t_end_ms)
         self.last_pcm[nid] = {
             "samples": int(clip.size),
@@ -331,6 +334,7 @@ class Hub:
             "t_start_ms": t_start_ms,
             "t_end_ms": t_end_ms,
         }
+        return clip, float(coverage)
 
     async def ingest_pcm(
         self,
@@ -375,7 +379,7 @@ def create_app(
     client = cloud_client or HttpCloudClient(CLOUD_URL)
     gate = EscalationGate(threshold=ESCALATE_MIN_CONFIDENCE, client=client, store=store)
     hub = Hub(
-        classifier=classifier or StubCnn(),
+        classifier=classifier or load_runtime(),
         gate=gate,
         store=store,
     )
