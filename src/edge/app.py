@@ -43,7 +43,7 @@ RATE_S = 1.5  # packet-rate window for the Hz readout
 ESCALATE_MIN_CONFIDENCE = 0.50
 WINDOW_S = 2.0
 HOP_S = 1.0
-CLOUD_URL = "http://127.0.0.1:8001"
+CLOUD_URL = os.environ.get("CLOUD_URL", "http://127.0.0.1:8001").rstrip("/")
 
 
 def _num(packet: dict[str, Any], key: str, default: float = 0.0) -> float:

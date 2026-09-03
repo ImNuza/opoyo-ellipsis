@@ -200,7 +200,7 @@ WS `k: "tick"` is one sample plus `combined` and the current `inference` blob.
 ESCALATE_MIN_CONFIDENCE = 0.90
 WINDOW_S = 2.0
 HOP_S = 1.0
-CLOUD_URL = http://127.0.0.1:8001
+CLOUD_URL = os.environ["CLOUD_URL"] or http://127.0.0.1:8001
 MAX_NODES = 5
 ```
 
@@ -279,6 +279,16 @@ fastapi dev src/server/app.py --host 127.0.0.1 --port 8001
 Open http://127.0.0.1:8000 and http://127.0.0.1:8001/health.
 
 On boot the edge should print `[edge] UDP listening on 0.0.0.0:9000`. Then start a phone or `fake_phone.py`.
+
+### Docker
+
+Needs Docker Desktop (or another Compose v2 engine) and a filled `.env` at the repo root. Telegram ids and `EDGE_ENABLE_UDP` come from that file. Compose points the edge at the server over the internal network (`CLOUD_URL=http://server:8001`), even if `.env` still says `127.0.0.1`.
+
+```bash
+docker compose up --build
+```
+
+Same ports as local: dashboard http://127.0.0.1:8000, cloud http://127.0.0.1:8001/health, phones/UDP `9000`/`9001`. Stop with Ctrl+C, or `docker compose up --build -d` to run in the background and `docker compose down` to stop.
 
 ---
 

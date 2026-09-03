@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
 
 def repo_root() -> Path:
+    env = os.environ.get("OPOYO_ROOT")
+    if env:
+        return Path(env)
     here = Path(__file__).resolve()
     for p in here.parents:
         if (p / "requirements.txt").is_file() and (p / "docs").is_dir():
