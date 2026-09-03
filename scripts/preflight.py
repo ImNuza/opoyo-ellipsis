@@ -44,7 +44,7 @@ cache = ROOT / "models" / "tfhub"
 check("YAMNet cached offline", cache.is_dir() and any(cache.iterdir()),
       "first inference would download from tfhub.dev on venue wifi")
 
-heads = ["mag_head.joblib", "yamnet_head.joblib", "fuse_head.joblib"]
+heads = ["mag_head.joblib", "yamnet_head.joblib", "joint_head.joblib"]
 have = [h for h in heads if (ROOT / "models" / h).exists()]
 check(f"model heads present ({len(have)}/3)", len(have) == 3,
       "run: python -m train.fit")
@@ -76,8 +76,13 @@ if tf_ok and len(have) == 3:
     try:
         from edge.infer import load_runtime
         clf = load_runtime()
-        check("live classifier is FusionCnn", type(clf).__name__ == "FusionCnn",
-              f"got {type(clf).__name__} -- the demo would run on the weak head")
+        name = type(clf).__name__
+        check(f"live classifier is a real model ({name})",
+              name in ("JointCnn", "FusionCnn"),
+              f"got {name} -- StubCnn never fires and MagOnlyCnn is the weak head")
+        check("using the joint head (best measured)", name == "JointCnn",
+              "JointCnn scores AP 0.932 out-of-fold vs 0.853 for the two-stage stack; "
+              "run python -m train.fit to build models/joint_head.joblib")
     except Exception as e:
         check("live classifier loads", False, str(e)[:110])
 

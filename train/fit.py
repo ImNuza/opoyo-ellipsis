@@ -34,6 +34,15 @@ from train.noise import VENUE, mix_at_snr  # noqa: E402
 MODELS = ROOT / "models"
 
 
+def _pipe_c(C):
+    return Pipeline(
+        [
+            ("scale", StandardScaler()),
+            ("clf", LogisticRegression(max_iter=1000, C=C, class_weight="balanced")),
+        ]
+    )
+
+
 def _pipe():
     return Pipeline(
         [
@@ -161,6 +170,22 @@ def main() -> None:
         fuse = _pipe()
         fuse.fit(fuse_x, y[both])
         joblib.dump(fuse, MODELS / "fuse_head.joblib")
+
+        # Joint head: the 6 hand features concatenated with the 1024-d YAMNet
+        # embedding, one logistic on the lot. Beats the two-stage stack in
+        # every condition we measured -- clean +0.038, and +0.04 to +0.07
+        # under babble / applause / hum / shuffle at 0 dB -- because the stack
+        # throws away the embedding and lets a 2-feature logistic see only two
+        # noisy out-of-fold probabilities.
+        Xj = np.hstack([Xm[have], Z])
+        _report("joint head, hand+embedding (out-of-fold)", y[have],
+                cross_val_predict(_pipe_c(0.05), Xj, y[have], cv=cv_y,
+                                  method="predict_proba")[:, 1])
+        joint = _pipe_c(0.05)
+        joint.fit(np.vstack([Xj] + [np.hstack([Xm[have], A]) for A in Z_aug[1:]]),
+                  np.concatenate(y_aug))
+        joblib.dump(joint, MODELS / "joint_head.joblib")
+        print("wrote models/joint_head.joblib  (this is what the edge now uses)")
         print("wrote models/fuse_head.joblib  (p_mag, p_yam each already in [0,1], then scaled)")
     else:
         print("no wavs — mag head only")

@@ -89,6 +89,38 @@ def _yamnet_embed(pcm: np.ndarray, fs: float = 16000.0) -> np.ndarray:
     return np.mean(emb.numpy(), axis=0)
 
 
+class JointCnn:
+    """One logistic over [6 hand features | 1024-d YAMNet embedding].
+
+    Replaces the two-stage stack, which fed a 2-feature logistic nothing but
+    two out-of-fold probabilities and scored lower in every condition tested.
+    Falls back to the vibration features alone if the window carries no PCM.
+    """
+
+    def __init__(self, models: Path | None = None) -> None:
+        root = Path(models) if models is not None else MODELS
+        self.joint = joblib.load(root / "joint_head.joblib")
+        self.mag = joblib.load(root / "mag_head.joblib")
+
+    def infer(self, window: SensorWindow) -> InferenceResult:
+        mag = np.asarray(window.mag, dtype=np.float64)
+        db = np.asarray(window.db, dtype=np.float64)
+        fs = float(window.hz) or 50.0
+        h = _mag_vector(mag, db, fs)
+        pcm = np.asarray(window.pcm, dtype=np.float64).ravel()
+        if pcm.size < 16:
+            p = float(self.mag.predict_proba(h.reshape(1, -1))[0, 1])
+            return _result(window, p >= 0.5, p)
+        try:
+            z = _yamnet_embed(pcm, float(window.pcm_hz) or 16000.0)
+        except Exception:
+            p = float(self.mag.predict_proba(h.reshape(1, -1))[0, 1])
+            return _result(window, p >= 0.5, p)
+        x = np.concatenate([h, z]).reshape(1, -1)
+        c = float(self.joint.predict_proba(x)[0, 1])
+        return _result(window, c >= 0.5, c)
+
+
 class FusionCnn:
     """Peak-norm mag logistic + frozen YAMNet logistic, fused on [p_mag, p_yam].
 
@@ -149,6 +181,15 @@ def load_runtime(allow_stub: bool | None = None) -> Classifier:
     """
     if allow_stub is None:
         allow_stub = os.getenv("OPOYO_ALLOW_STUB") == "1"
+
+    joint = (MODELS / "joint_head.joblib", MODELS / "mag_head.joblib")
+    if all(p.exists() for p in joint):
+        try:
+            clf = JointCnn()
+            print("[edge] JointCnn loaded (hand features + YAMNet, one head)")
+            return clf
+        except Exception as exc:
+            print(f"[edge] JointCnn load failed ({exc}); trying the two-stage stack")
 
     fusion = (
         MODELS / "mag_head.joblib",
