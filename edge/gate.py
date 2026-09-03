@@ -5,9 +5,9 @@ from __future__ import annotations
 import time
 from typing import Callable, Protocol
 
-from shared.schemas import FallEvent, InferenceResult
+from shared.schemas import ALERT_COOLDOWN_S, FallEvent, InferenceResult
 
-ESCALATE_COOLDOWN_S = 3.0
+ESCALATE_COOLDOWN_S = ALERT_COOLDOWN_S
 
 
 class CloudClient(Protocol):
@@ -48,9 +48,11 @@ def should_escalate(result: InferenceResult, threshold: float) -> bool:
 class EscalationGate:
     """Always append to the log. Escalate iff is_fall and confidence >= threshold.
 
-    After a POST for a node, further gated falls from that node are logged but
-    not posted until ``cooldown_s`` has elapsed. Overlapping 2 s / 1 s windows
-    otherwise open two Telegram ladders from one impact.
+    Cooldown starts after a successful POST, not before it. Further gated falls
+    from that node are logged but not posted until ``cooldown_s`` of wall time
+    has passed *and* the new window is at least ``cooldown_s`` after the posted
+    event. Overlapping 2 s / 1 s hops would otherwise open two Telegram ladders
+    from one impact once YAMNet + Telegram take longer than the cooldown.
     """
 
     def __init__(
@@ -67,6 +69,18 @@ class EscalationGate:
         self.cooldown_s = cooldown_s
         self._clock = clock or time.monotonic
         self._last_sent_at: dict[str, float] = {}
+        self._last_event_ms: dict[str, int] = {}
+
+    def _cooling_down(self, result: InferenceResult) -> bool:
+        last_wall = self._last_sent_at.get(result.node_id)
+        if last_wall is not None and (self._clock() - last_wall) < self.cooldown_s:
+            return True
+        last_ms = self._last_event_ms.get(result.node_id)
+        if last_ms is not None:
+            dt_ms = result.timestamp - last_ms
+            if 0 <= dt_ms < self.cooldown_s * 1000.0:
+                return True
+        return False
 
     def handle(self, result: InferenceResult) -> FallEvent | None:
         append = getattr(self.store, "append", None)
@@ -74,9 +88,7 @@ class EscalationGate:
             append(result)
         if not should_escalate(result, self.threshold):
             return None
-        now = self._clock()
-        last = self._last_sent_at.get(result.node_id)
-        if last is not None and (now - last) < self.cooldown_s:
+        if self._cooling_down(result):
             return None
         event = FallEvent(
             event_id=result.inference_id,
@@ -88,7 +100,10 @@ class EscalationGate:
             confidence=result.confidence,
             threshold=self.threshold,
         )
+        # Stamp before POST so a slow Telegram send cannot open a second
+        # window; stamp again after so the 3 s pause starts when it returns.
+        self._last_sent_at[result.node_id] = self._clock()
+        self._last_event_ms[result.node_id] = result.timestamp
         self.client.post(event)
-        self._last_sent_at[result.node_id] = now
-        return event
-    
+        self._last_sent_at[result.node_id] = self._clock()
+        return event 

@@ -43,17 +43,26 @@ def build_tree() -> DecisionTree:
     )
 
 
-def _newest_rung1(tree: DecisionTree) -> str | None:
-    """Newest open senior check-in. Used when the senior typed yes/no."""
-    open_cases = [
-        case
-        for case in tree.cases.values()
-        if case.state == "rung1_dispatched"
-    ]
+def _newest_open(
+    tree: DecisionTree,
+    states: frozenset[str],
+) -> str | None:
+    """Newest case in ``states``. Used when a typed reply has no case_id."""
+    open_cases = [case for case in tree.cases.values() if case.state in states]
     if not open_cases:
         return None
     open_cases.sort(key=lambda c: c.started_at_s, reverse=True)
     return open_cases[0].case_id
+
+
+def _newest_rung1(tree: DecisionTree) -> str | None:
+    """Newest open senior check-in. Used when the senior typed yes/no."""
+    return _newest_open(tree, frozenset({"rung1_dispatched"}))
+
+
+def _newest_family_open(tree: DecisionTree) -> str | None:
+    """Newest case family can still take."""
+    return _newest_open(tree, frozenset({"rung1_dispatched", "awaiting_family"}))
 
 
 def _apply_telegram_ack(
@@ -61,13 +70,22 @@ def _apply_telegram_ack(
     telegram: Telegram,
     item: TelegramAck,
 ) -> EscalationCase | None:
-    """Bind a Telegram senior reply to a case and confirm back in-chat."""
-    case_id = item.case_id or _newest_rung1(tree)
+    """Bind a Telegram reply to a case and confirm back in-chat."""
+    if item.actor == "family":
+        case_id = item.case_id or _newest_family_open(tree)
+    else:
+        case_id = item.case_id or _newest_rung1(tree)
     if not case_id:
         return None
     case = tree.on_ack(item.to_ack(case_id=case_id))
     if case is None:
         return None
+    if item.actor == "family":
+        if case.state == "family_handling":
+            telegram.confirm_family(item.chat_id)
+            if item.callback_query_id:
+                telegram.answer_callback(item.callback_query_id, "You're on it.")
+        return case
     telegram.confirm_senior(item.chat_id, item.outcome)
     if item.callback_query_id:
         note = (
@@ -91,10 +109,12 @@ def create_app(tree: DecisionTree | None = None) -> FastAPI:
     """
     live_telegram: Telegram | None = None
     senior_chat_id = ""
+    family_chat_id = ""
     if tree is None:
         cfg = load_cloud_env()
         live_telegram = Telegram(cfg["telegram_bot_token"])
         senior_chat_id = cfg["senior_chat_id"] or ""
+        family_chat_id = cfg["next_of_kin_chat_id"] or ""
         escalation = DecisionTree(
             clock=SystemClock(),
             telegram=live_telegram,
@@ -108,6 +128,7 @@ def create_app(tree: DecisionTree | None = None) -> FastAPI:
     app.state.tree = escalation
     app.state.telegram = live_telegram
     app.state.senior_chat_id = senior_chat_id
+    app.state.family_chat_id = family_chat_id
 
     @app.post("/events")
     async def ingest_event(event: FallEvent) -> JSONResponse:
@@ -141,7 +162,7 @@ def create_app(tree: DecisionTree | None = None) -> FastAPI:
     @app.on_event("startup")
     async def _ticks() -> None:
         # Secondary Telegram at t+60 and CareLine stub at t+180 live here, not on a route.
-        # Senior button / text replies are polled from Telegram on the same tick.
+        # Senior / family button and text replies are polled from Telegram on the same tick.
         async def loop() -> None:
             while True:
                 await asyncio.sleep(0.5)
@@ -149,7 +170,10 @@ def create_app(tree: DecisionTree | None = None) -> FastAPI:
                     escalation.on_tick()
                     inbox = app.state.telegram
                     if inbox is not None and inbox.configured:
-                        for item in inbox.poll_acks(app.state.senior_chat_id or ""):
+                        for item in inbox.poll_acks(
+                            app.state.senior_chat_id or "",
+                            app.state.family_chat_id or "",
+                        ):
                             _apply_telegram_ack(escalation, inbox, item)
                 except Exception:
                     continue

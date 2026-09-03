@@ -59,6 +59,11 @@ class InferenceResult(BaseModel):
     confidence: float = Field(ge=0.0, le=1.0)
 
 
+# After a Telegram ladder is opened, the same node is quiet for this long
+# (wall clock and window timestamp). Shared by the edge gate and the cloud.
+ALERT_COOLDOWN_S = 3.0
+
+
 class FallEvent(BaseModel):
     """Gated fall. is_fall is always True; threshold is the edge gate that fired."""
 

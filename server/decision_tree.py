@@ -12,8 +12,14 @@ from typing import Protocol
 from uuid import uuid4
 
 from server.adapters import Sender
-from server.adapters.telegram import senior_ack_markup
-from shared.schemas import AckEvent, EscalationCase, EscalationCommand, FallEvent
+from server.adapters.telegram import family_ack_markup, senior_ack_markup
+from shared.schemas import (
+    ALERT_COOLDOWN_S,
+    AckEvent,
+    EscalationCase,
+    EscalationCommand,
+    FallEvent,
+)
 
 
 TERMINAL = frozenset(
@@ -58,6 +64,8 @@ def fall_message(event: FallEvent) -> str:
     )
     return (
         f"OPOYO: fall. Room {event.room}. {ts}. "
+        f"Tap I'm on it if you are handling this "
+        f"(or reply taken). "
         f"confidence {event.confidence:.2f}."
     )
 
@@ -88,14 +96,38 @@ class DecisionTree:
         next_of_kin_chat_id: str,
         secondary_chat_id: str,
         senior_chat_id: str,
+        cooldown_s: float = ALERT_COOLDOWN_S,
     ) -> None:
         self._clock = clock
         self._telegram = telegram
         self._next_of_kin_chat_id = next_of_kin_chat_id
         self._secondary_chat_id = secondary_chat_id
         self._senior_chat_id = senior_chat_id
+        self._cooldown_s = cooldown_s
         self.cases: dict[str, EscalationCase] = {}
         self._by_event: dict[str, str] = {}
+        self._last_alert_at: dict[str, float] = {}
+        self._last_alert_ms: dict[str, int] = {}
+        self._last_case: dict[str, str] = {}
+
+    def _cooldown_case(self, event: FallEvent) -> EscalationCase | None:
+        """Existing case if this node already alerted within ``cooldown_s``."""
+        key = event.node_id
+        case_id = self._last_case.get(key)
+        if case_id is None:
+            return None
+        case = self.cases.get(case_id)
+        if case is None:
+            return None
+        last_wall = self._last_alert_at.get(key)
+        if last_wall is not None and (self._clock.now() - last_wall) < self._cooldown_s:
+            return case
+        last_ms = self._last_alert_ms.get(key)
+        if last_ms is not None:
+            dt_ms = event.timestamp - last_ms
+            if 0 <= dt_ms < self._cooldown_s * 1000.0:
+                return case
+        return None
 
     def ingest(self, event: FallEvent) -> EscalationCase:
         """Start a case and fire t+0 alerts.
@@ -104,11 +136,17 @@ class DecisionTree:
             event: Confirmed fall from the edge.
 
         Returns:
-            The new or existing case for ``event.event_id``.
+            The new or existing case for ``event.event_id``. A second fall
+            from the same node inside the cooldown reuses the open case and
+            does not send another Telegram ladder.
         """
         existing_id = self._by_event.get(event.event_id)
         if existing_id is not None:
             return self.cases[existing_id]
+        cooled = self._cooldown_case(event)
+        if cooled is not None:
+            self._by_event[event.event_id] = cooled.case_id
+            return cooled
         now = self._clock.now()
         case = EscalationCase(
             case_id=uuid4().hex[:12],
@@ -118,6 +156,11 @@ class DecisionTree:
         )
         self.cases[case.case_id] = case
         self._by_event[event.event_id] = case.case_id
+        # Stamp before Telegram so a second POST cannot sneak a duplicate
+        # ladder in while sendMessage is still in flight.
+        self._last_alert_at[event.node_id] = now
+        self._last_alert_ms[event.node_id] = event.timestamp
+        self._last_case[event.node_id] = case.case_id
         self._dispatch(
             case,
             rung="family_telegram",
@@ -125,6 +168,7 @@ class DecisionTree:
             sender=self._telegram,
             destination=self._next_of_kin_chat_id,
             message=fall_message(event),
+            reply_markup=family_ack_markup(case.case_id),
         )
         self._dispatch(
             case,
@@ -159,7 +203,7 @@ class DecisionTree:
                 case.state = "awaiting_family"
                 case.family_wait_started_at = self._clock.now()
         elif ack.actor == "family" and ack.outcome == "taken":
-            if case.state == "awaiting_family":
+            if case.state in {"rung1_dispatched", "awaiting_family"}:
                 case.state = "family_handling"
         elif ack.actor == "secondary" and ack.outcome == "taken":
             if case.state == "secondary_alerted":

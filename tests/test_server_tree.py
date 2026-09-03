@@ -57,7 +57,14 @@ def test_ingest_dispatches_rung1():
     assert "I'm fine" in telegram.sent[1][1]
     assert "reply yes" in telegram.sent[1][1]
     assert telegram.sent[1][1] == senior_check_message(_event())
-    assert telegram.markups[0] is None
+    family_markup = telegram.markups[0]
+    assert family_markup is not None
+    family_data = {
+        btn["callback_data"]
+        for row in family_markup["inline_keyboard"]
+        for btn in row
+    }
+    assert f"ack:{case.case_id}:taken" in family_data
     senior_markup = telegram.markups[1]
     assert senior_markup is not None
     data = {
@@ -92,6 +99,20 @@ def test_senior_no_answer_waits_for_family():
         )
     )
     assert tree.cases[case.case_id].state == "awaiting_family"
+    assert len(telegram.sent) == 2
+
+
+def test_family_taken_at_t0_stops_ladder():
+    tree, clock, telegram = _tree()
+    case = tree.ingest(_event())
+    tree.on_ack(
+        AckEvent(case_id=case.case_id, actor="family", outcome="taken", timestamp=1)
+    )
+    assert tree.cases[case.case_id].state == "family_handling"
+    clock.advance(60)
+    tree.on_tick()
+    clock.advance(120)
+    tree.on_tick()
     assert len(telegram.sent) == 2
 
 
@@ -208,3 +229,41 @@ def test_duplicate_event_id_does_not_start_second_case():
     assert first.case_id == second.case_id
     assert len(tree.cases) == 1
     assert len(telegram.sent) == 2
+
+
+def test_cooldown_skips_second_telegram_same_node():
+    tree, _clock, telegram = _tree()
+    first_event = _event()
+    first = tree.ingest(first_event)
+    second = tree.ingest(
+        first_event.model_copy(
+            update={
+                "event_id": "evt2",
+                "inference_id": "evt2",
+                "timestamp": first_event.timestamp + 1000,
+                "confidence": 0.71,
+            }
+        )
+    )
+    assert second.case_id == first.case_id
+    assert len(tree.cases) == 1
+    assert len(telegram.sent) == 2
+
+
+def test_cooldown_expires_after_three_seconds():
+    tree, clock, telegram = _tree()
+    first_event = _event()
+    first = tree.ingest(first_event)
+    clock.advance(3.0)
+    later = tree.ingest(
+        first_event.model_copy(
+            update={
+                "event_id": "evt2",
+                "inference_id": "evt2",
+                "timestamp": first_event.timestamp + 3000,
+            }
+        )
+    )
+    assert later.case_id != first.case_id
+    assert len(tree.cases) == 2
+    assert len(telegram.sent) == 4

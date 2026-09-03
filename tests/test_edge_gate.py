@@ -109,12 +109,13 @@ def test_cooldown_expires_after_three_seconds(tmp_path):
         cooldown_s=3.0,
         clock=lambda: t["now"],
     )
-    gate.handle(_result(True, 0.94))
+    first = _result(True, 0.94)
+    gate.handle(first)
     t["now"] = 3.0
     later = gate.handle(
         InferenceResult(
             inference_id="inf2",
-            timestamp=2,
+            timestamp=first.timestamp + 3000,
             node_id="Phone 1",
             room=1,
             is_fall=True,
@@ -123,6 +124,95 @@ def test_cooldown_expires_after_three_seconds(tmp_path):
     )
     assert later is not None
     assert len(client.posted) == 2
+
+
+class _SlowPostClient:
+    """Advances the fake clock during POST, like a blocking Telegram send."""
+
+    def __init__(self, t: dict[str, float], delay_s: float) -> None:
+        self.posted: list = []
+        self._t = t
+        self._delay_s = delay_s
+
+    def post(self, event) -> None:
+        self._t["now"] += self._delay_s
+        self.posted.append(event)
+
+
+def test_cooldown_starts_after_post_not_before(tmp_path):
+    t = {"now": 0.0}
+    client = _SlowPostClient(t, delay_s=3.0)
+    store = InferenceLog(tmp_path / "inference.jsonl")
+    gate = EscalationGate(
+        threshold=0.90,
+        client=client,
+        store=store,
+        cooldown_s=3.0,
+        clock=lambda: t["now"],
+    )
+    first = gate.handle(_result(True, 0.94))
+    second = gate.handle(
+        InferenceResult(
+            inference_id="inf2",
+            timestamp=_result(True, 0.94).timestamp + 1000,
+            node_id="Phone 1",
+            room=1,
+            is_fall=True,
+            confidence=0.94,
+        )
+    )
+    assert first is not None
+    assert second is None
+    assert len(client.posted) == 1
+
+
+def test_cooldown_holds_when_infer_is_slower_than_three_seconds(tmp_path):
+    client = RecordingCloudClient()
+    store = InferenceLog(tmp_path / "inference.jsonl")
+    t = {"now": 0.0}
+    gate = EscalationGate(
+        threshold=0.50,
+        client=client,
+        store=store,
+        cooldown_s=3.0,
+        clock=lambda: t["now"],
+    )
+    t0 = 1_788_418_513_053
+    first = gate.handle(
+        InferenceResult(
+            inference_id="inf1",
+            timestamp=t0,
+            node_id="Phone 1",
+            room=1,
+            is_fall=True,
+            confidence=0.84,
+        )
+    )
+    t["now"] = 5.0
+    second = gate.handle(
+        InferenceResult(
+            inference_id="inf2",
+            timestamp=t0 + 1001,
+            node_id="Phone 1",
+            room=1,
+            is_fall=True,
+            confidence=0.72,
+        )
+    )
+    third = gate.handle(
+        InferenceResult(
+            inference_id="inf3",
+            timestamp=t0 + 2003,
+            node_id="Phone 1",
+            room=1,
+            is_fall=True,
+            confidence=0.60,
+        )
+    )
+    assert first is not None
+    assert second is None
+    assert third is None
+    assert len(client.posted) == 1
 
 
 def test_cooldown_is_per_node(tmp_path):

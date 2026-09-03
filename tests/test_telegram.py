@@ -6,12 +6,14 @@ import pytest
 from server.adapters.telegram import (
     Telegram,
     TelegramAck,
+    family_ack_markup,
     parse_callback_data,
+    parse_family_text,
     parse_senior_text,
     parse_update,
     senior_ack_markup,
 )
-from server.app import _apply_telegram_ack, _newest_rung1
+from server.app import _apply_telegram_ack, _newest_family_open, _newest_rung1
 from server.decision_tree import DecisionTree
 from shared.schemas import FallEvent
 from tests.fakes import FakeClock, FakeSender
@@ -93,8 +95,26 @@ def test_parse_senior_text(text, expected):
 def test_parse_callback_data():
     assert parse_callback_data("ack:deadbeef:yes") == ("deadbeef", "yes")
     assert parse_callback_data("ack:deadbeef:not_fine") == ("deadbeef", "not_fine")
+    assert parse_callback_data("ack:deadbeef:taken") == ("deadbeef", "taken")
     assert parse_callback_data("ack::yes") is None
     assert parse_callback_data("nope") is None
+
+
+@pytest.mark.parametrize(
+    "text,expected",
+    [
+        ("taken", "taken"),
+        ("I'm on it", "taken"),
+        ("on it", "taken"),
+        ("got it", "taken"),
+        ("I'll handle", "taken"),
+        ("yes", None),
+        ("hello", None),
+        ("", None),
+    ],
+)
+def test_parse_family_text(text, expected):
+    assert parse_family_text(text) == expected
 
 
 def test_parse_update_callback():
@@ -121,7 +141,31 @@ def test_parse_update_text():
         "message": {"chat": {"id": 555}, "text": "yes"},
     }
     got = parse_update(update)
-    assert got == TelegramAck(chat_id="555", outcome="yes")
+    assert got == TelegramAck(chat_id="555", outcome="yes", actor="senior")
+
+
+def test_parse_update_family_taken_callback():
+    update = {
+        "update_id": 4,
+        "callback_query": {
+            "id": "cb2",
+            "data": "ack:case99:taken",
+            "message": {"chat": {"id": 777}},
+        },
+    }
+    got = parse_update(update)
+    assert got == TelegramAck(
+        chat_id="777",
+        outcome="taken",
+        case_id="case99",
+        callback_query_id="cb2",
+        actor="family",
+    )
+
+
+def test_family_ack_markup():
+    markup = family_ack_markup("abc123")
+    assert markup["inline_keyboard"][0][0]["callback_data"] == "ack:abc123:taken"
 
 
 def test_parse_update_ignores_noise():
@@ -204,10 +248,36 @@ def test_poll_acks_keeps_callbacks_and_senior_text(monkeypatch):
     )
     client = Telegram("bot-token")
     client._drained = True
-    acks = client.poll_acks("senior")
+    acks = client.poll_acks("senior", "kin")
     assert [a.outcome for a in acks] == ["not_fine", "not_fine"]
     assert acks[0].case_id == "c1"
     assert acks[1].case_id == ""
+
+
+def test_poll_acks_keeps_family_text(monkeypatch):
+    payload = [
+        {"update_id": 30, "message": {"chat": {"id": "kin"}, "text": "taken"}},
+        {"update_id": 31, "message": {"chat": {"id": "other"}, "text": "taken"}},
+        {"update_id": 32, "message": {"chat": {"id": "senior"}, "text": "yes"}},
+    ]
+
+    class FakeResponse:
+        status_code = 200
+
+        def json(self):
+            return {"ok": True, "result": payload}
+
+    monkeypatch.setattr(
+        "server.adapters.telegram.httpx.get",
+        lambda url, params, timeout: FakeResponse(),
+    )
+    client = Telegram("bot-token")
+    client._drained = True
+    acks = client.poll_acks("senior", "kin")
+    assert [(a.actor, a.outcome, a.chat_id) for a in acks] == [
+        ("family", "taken", "kin"),
+        ("senior", "yes", "senior"),
+    ]
 
 
 def test_get_updates_returns_empty_on_http_error(monkeypatch):
@@ -290,3 +360,63 @@ def test_typed_yes_binds_newest_open_case(monkeypatch):
     assert updated is not None
     assert updated.case_id == case.case_id
     assert updated.state == "false_alarm_closed"
+
+
+def test_family_callback_taken_closes_without_http_ack(monkeypatch):
+    tree = DecisionTree(
+        clock=FakeClock(),
+        telegram=FakeSender(),
+        next_of_kin_chat_id="kin",
+        secondary_chat_id="sec",
+        senior_chat_id="senior",
+    )
+    case = tree.ingest(_event())
+    posted: list[dict] = []
+
+    class FakeResponse:
+        status_code = 200
+
+    def fake_post(url, json, timeout):
+        posted.append({"url": url, "json": json})
+        return FakeResponse()
+
+    monkeypatch.setattr("server.adapters.telegram.httpx.post", fake_post)
+    inbox = Telegram("bot-token")
+    item = TelegramAck(
+        chat_id="kin",
+        outcome="taken",
+        case_id=case.case_id,
+        callback_query_id="cb2",
+        actor="family",
+    )
+    updated = _apply_telegram_ack(tree, inbox, item)
+    assert updated is not None
+    assert updated.state == "family_handling"
+    assert any(p["url"].endswith("sendMessage") for p in posted)
+    assert any(p["url"].endswith("answerCallbackQuery") for p in posted)
+
+
+def test_typed_taken_binds_newest_open_case(monkeypatch):
+    tree = DecisionTree(
+        clock=FakeClock(),
+        telegram=FakeSender(),
+        next_of_kin_chat_id="kin",
+        secondary_chat_id="sec",
+        senior_chat_id="senior",
+    )
+    case = tree.ingest(_event())
+    assert _newest_family_open(tree) == case.case_id
+
+    class FakeResponse:
+        status_code = 200
+
+    monkeypatch.setattr(
+        "server.adapters.telegram.httpx.post",
+        lambda url, json, timeout: FakeResponse(),
+    )
+    inbox = Telegram("bot-token")
+    item = TelegramAck(chat_id="kin", outcome="taken", case_id="", actor="family")
+    updated = _apply_telegram_ack(tree, inbox, item)
+    assert updated is not None
+    assert updated.case_id == case.case_id
+    assert updated.state == "family_handling"

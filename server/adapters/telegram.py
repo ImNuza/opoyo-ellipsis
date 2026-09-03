@@ -1,4 +1,4 @@
-"""Telegram Bot API transport: outbound alerts and inbound senior acks."""
+"""Telegram Bot API transport: outbound alerts and inbound senior/family acks."""
 
 from __future__ import annotations
 
@@ -8,28 +8,57 @@ from typing import Literal
 
 import httpx
 
-from shared.schemas import AckEvent
+from shared.schemas import AckActor, AckEvent, AckOutcome
 
-SeniorOutcome = Literal["yes", "not_fine"]
+TelegramOutcome = Literal["yes", "not_fine", "taken"]
 
 _YES = frozenset({"yes", "y", "ok", "okay", "fine", "im fine", "i am fine", "i'm fine"})
 _NO = frozenset({"no", "help", "hurt", "not fine", "notfine", "nope"})
+_TAKEN = frozenset(
+    {
+        "taken",
+        "on it",
+        "i'm on it",
+        "im on it",
+        "i am on it",
+        "got it",
+        "handling",
+        "i'll handle",
+        "ill handle",
+        "i will handle",
+    }
+)
+_CALLBACK_OUTCOMES = frozenset({"yes", "not_fine", "taken"})
+
+
+def _clean_text(text: str) -> tuple[str, str]:
+    raw = (text or "").strip().lower()
+    cleaned = "".join(ch for ch in raw if ch.isalnum() or ch.isspace() or ch == "'")
+    cleaned = " ".join(cleaned.split())
+    compact = cleaned.replace(" ", "")
+    return cleaned, compact
+
+
+def _actor_for_outcome(outcome: TelegramOutcome) -> AckActor:
+    return "family" if outcome == "taken" else "senior"
 
 
 @dataclass(frozen=True)
 class TelegramAck:
-    """One senior reply parsed from a Bot API update. Not a DecisionTree type."""
+    """One reply parsed from a Bot API update. Not a DecisionTree type."""
 
     chat_id: str
-    outcome: SeniorOutcome
+    outcome: TelegramOutcome
     case_id: str = ""
     callback_query_id: str | None = None
+    actor: AckActor = "senior"
 
     def to_ack(self, case_id: str | None = None, timestamp: int | None = None) -> AckEvent:
+        outcome: AckOutcome = self.outcome
         return AckEvent(
             case_id=case_id if case_id is not None else self.case_id,
-            actor="senior",
-            outcome=self.outcome,
+            actor=self.actor,
+            outcome=outcome,
             timestamp=int(time.time() * 1000) if timestamp is None else timestamp,
         )
 
@@ -46,15 +75,20 @@ def senior_ack_markup(case_id: str) -> dict:
     }
 
 
-def parse_senior_text(text: str) -> SeniorOutcome | None:
+def family_ack_markup(case_id: str) -> dict:
+    """Inline keyboard posted with the family fall alert."""
+    return {
+        "inline_keyboard": [
+            [{"text": "I'm on it", "callback_data": f"ack:{case_id}:taken"}]
+        ]
+    }
+
+
+def parse_senior_text(text: str) -> Literal["yes", "not_fine"] | None:
     """Map a typed reply to a senior outcome. Unknown text is ignored."""
-    raw = (text or "").strip().lower()
-    if not raw:
+    cleaned, compact = _clean_text(text)
+    if not cleaned:
         return None
-    # Keep apostrophes so "i'm fine" matches; drop other punctuation.
-    cleaned = "".join(ch for ch in raw if ch.isalnum() or ch.isspace() or ch == "'")
-    cleaned = " ".join(cleaned.split())
-    compact = cleaned.replace(" ", "")
     if cleaned in _YES or compact in {"imfine", "iamfine"}:
         return "yes"
     if cleaned in _NO or compact == "notfine":
@@ -62,8 +96,18 @@ def parse_senior_text(text: str) -> SeniorOutcome | None:
     return None
 
 
-def parse_callback_data(data: str) -> tuple[str, SeniorOutcome] | None:
-    """Parse ``ack:{{case_id}}:yes|not_fine``. Case ids are hex without colons."""
+def parse_family_text(text: str) -> Literal["taken"] | None:
+    """Map a typed reply to family taken. Unknown text is ignored."""
+    cleaned, compact = _clean_text(text)
+    if not cleaned:
+        return None
+    if cleaned in _TAKEN or compact in {"imonit", "iamonit", "illhandle", "iwillhandle"}:
+        return "taken"
+    return None
+
+
+def parse_callback_data(data: str) -> tuple[str, TelegramOutcome] | None:
+    """Parse ``ack:{{case_id}}:yes|not_fine|taken``. Case ids are hex without colons."""
     if not data or not data.startswith("ack:"):
         return None
     rest = data[4:]
@@ -72,13 +116,13 @@ def parse_callback_data(data: str) -> tuple[str, SeniorOutcome] | None:
         return None
     case_id = rest[:idx]
     outcome = rest[idx + 1 :]
-    if not case_id or outcome not in {"yes", "not_fine"}:
+    if not case_id or outcome not in _CALLBACK_OUTCOMES:
         return None
     return case_id, outcome  # type: ignore[return-value]
 
 
 def parse_update(update: dict) -> TelegramAck | None:
-    """Turn one getUpdates payload into a senior ack, or None if it is unrelated."""
+    """Turn one getUpdates payload into an ack, or None if it is unrelated."""
     if not isinstance(update, dict):
         return None
     callback = update.get("callback_query")
@@ -98,22 +142,29 @@ def parse_update(update: dict) -> TelegramAck | None:
             outcome=outcome,
             case_id=case_id,
             callback_query_id=str(callback.get("id") or "") or None,
+            actor=_actor_for_outcome(outcome),
         )
     message = update.get("message")
     if not isinstance(message, dict):
         return None
-    outcome = parse_senior_text(str(message.get("text") or ""))
-    if outcome is None:
+    text = str(message.get("text") or "")
+    family = parse_family_text(text)
+    senior = parse_senior_text(text) if family is None else None
+    if family is None and senior is None:
         return None
     chat = message.get("chat") if isinstance(message.get("chat"), dict) else {}
     chat_id = chat.get("id")
     if chat_id is None:
         return None
-    return TelegramAck(chat_id=str(chat_id), outcome=outcome)
+    if family is not None:
+        return TelegramAck(chat_id=str(chat_id), outcome=family, actor="family")
+    if senior is None:
+        return None
+    return TelegramAck(chat_id=str(chat_id), outcome=senior, actor="senior")
 
 
 class Telegram:
-    """Sends text to a Telegram chat and polls senior acks via getUpdates."""
+    """Sends text to a Telegram chat and polls senior / family acks via getUpdates."""
 
     def __init__(self, bot_token: str | None) -> None:
         self._bot_token = (bot_token or "").strip()
@@ -162,6 +213,10 @@ class Telegram:
             text = "Help noted, family is on it."
         return self.send(chat_id, text)
 
+    def confirm_family(self, chat_id: str) -> bool:
+        """Short follow-up after family takes the case."""
+        return self.send(chat_id, "Noted — you're handling this. Case closed.")
+
     def answer_callback(self, callback_query_id: str, text: str = "") -> bool:
         """Clear the inline-button spinner. Failures are swallowed."""
         if not self._bot_token or not callback_query_id:
@@ -200,13 +255,18 @@ class Telegram:
                 self._offset = last + 1
         return updates
 
-    def poll_acks(self, senior_chat_id: str) -> list[TelegramAck]:
-        """Senior button taps and typed yes/no from the senior chat.
+    def poll_acks(
+        self,
+        senior_chat_id: str,
+        family_chat_id: str = "",
+    ) -> list[TelegramAck]:
+        """Button taps and typed replies from the senior and family chats.
 
         Callbacks already carry ``case_id``. Typed replies have empty
-        ``case_id``; the cloud binds those to the newest open check-in.
+        ``case_id``; the cloud binds those to the newest matching open case.
         """
         senior = str(senior_chat_id or "")
+        family = str(family_chat_id or "")
         found: list[TelegramAck] = []
         for update in self.get_updates():
             parsed = parse_update(update)
@@ -215,7 +275,9 @@ class Telegram:
             if parsed.callback_query_id:
                 found.append(parsed)
                 continue
-            if senior and parsed.chat_id == senior:
+            if parsed.actor == "senior" and senior and parsed.chat_id == senior:
+                found.append(parsed)
+            elif parsed.actor == "family" and family and parsed.chat_id == family:
                 found.append(parsed)
         return found
 
