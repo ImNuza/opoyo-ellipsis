@@ -358,10 +358,10 @@
       </div>
     </main>
 
-    <footer>
+    <!-- <footer>
       <p>Phone is a proxy. Product is a floor puck.</p>
       <p id="foot">Edge stub CNN. Cloud only on gated falls.</p>
-    </footer>
+    </footer> -->
   </div>
   <script>
     const MAX = 220;
@@ -378,7 +378,6 @@
     let inference = { latest: null, log: [], cfg: { escalate_min_confidence: 0.9 } };
 
     const pauseBtn = document.getElementById("pause");
-    const footEl = document.getElementById("foot");
     const comboNote = document.getElementById("comboNote");
     const bannerEl = document.getElementById("banner");
     const bannerText = document.getElementById("bannerText");
@@ -600,7 +599,6 @@
         bannerText.textContent = "No inference yet";
       }
       const thresh = d.cfg && d.cfg.escalate_min_confidence;
-      footEl.textContent = "Dropped extras: " + dropped + ". Threshold: " + (typeof thresh === "number" ? thresh.toFixed(2) : "-") + ".";
       const rows = (d.log || []).slice().reverse();
       inferLogBody.innerHTML = "";
       rows.forEach((row) => {
@@ -643,7 +641,6 @@
       }
       drawFloor();
       renderPhone1();
-      if (!s.inference) footEl.textContent = "Dropped extras: " + dropped + ".";
     }
 
     function onTick(p) {
