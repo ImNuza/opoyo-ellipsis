@@ -20,7 +20,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import ValidationError
 
-from edge.gate import EscalationGate, HttpCloudClient
+from edge.gate import ESCALATE_COOLDOWN_S, EscalationGate, HttpCloudClient
 from edge.infer import Classifier, load_runtime
 from edge.log import InferenceLog
 from edge.pcm_ring import PcmRing
@@ -162,6 +162,7 @@ class Hub:
             "log": [row.model_dump() for row in self.store.tail(50)],
             "cfg": {
                 "escalate_min_confidence": ESCALATE_MIN_CONFIDENCE,
+                "escalate_cooldown_s": ESCALATE_COOLDOWN_S,
                 "window_s": WINDOW_S,
                 "hop_s": HOP_S,
                 "cloud_url": CLOUD_URL,
@@ -377,7 +378,12 @@ def create_app(
     """Build the edge app. Tests inject classifier, cloud_client, log_path, UDP."""
     store = InferenceLog(log_path or (DATA_DIR / "inference.jsonl"))
     client = cloud_client or HttpCloudClient(CLOUD_URL)
-    gate = EscalationGate(threshold=ESCALATE_MIN_CONFIDENCE, client=client, store=store)
+    gate = EscalationGate(
+        threshold=ESCALATE_MIN_CONFIDENCE,
+        client=client,
+        store=store,
+        cooldown_s=ESCALATE_COOLDOWN_S,
+    )
     hub = Hub(
         classifier=classifier or load_runtime(),
         gate=gate,

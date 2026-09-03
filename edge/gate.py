@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Protocol
+import time
+from typing import Callable, Protocol
 
 from shared.schemas import FallEvent, InferenceResult
+
+ESCALATE_COOLDOWN_S = 3.0
 
 
 class CloudClient(Protocol):
@@ -43,34 +46,49 @@ def should_escalate(result: InferenceResult, threshold: float) -> bool:
 
 
 class EscalationGate:
-    """Always append to the log. Escalate iff is_fall and confidence >= threshold."""
+    """Always append to the log. Escalate iff is_fall and confidence >= threshold.
+
+    After a POST for a node, further gated falls from that node are logged but
+    not posted until ``cooldown_s`` has elapsed. Overlapping 2 s / 1 s windows
+    otherwise open two Telegram ladders from one impact.
+    """
 
     def __init__(
         self,
         threshold: float,
         client: CloudClient,
         store: object | None = None,
+        cooldown_s: float = ESCALATE_COOLDOWN_S,
+        clock: Callable[[], float] | None = None,
     ) -> None:
         self.threshold = threshold
         self.client = client
         self.store = store
+        self.cooldown_s = cooldown_s
+        self._clock = clock or time.monotonic
+        self._last_sent_at: dict[str, float] = {}
 
     def handle(self, result: InferenceResult) -> FallEvent | None:
         append = getattr(self.store, "append", None)
         if callable(append):
             append(result)
-        if should_escalate(result, self.threshold):
-            event = FallEvent(
-                event_id=result.inference_id,
-                inference_id=result.inference_id,
-                timestamp=result.timestamp,
-                node_id=result.node_id,
-                room=result.room,
-                is_fall=True,
-                confidence=result.confidence,
-                threshold=self.threshold,
-            )
-            self.client.post(event)
-            return event
-        return None
+        if not should_escalate(result, self.threshold):
+            return None
+        now = self._clock()
+        last = self._last_sent_at.get(result.node_id)
+        if last is not None and (now - last) < self.cooldown_s:
+            return None
+        event = FallEvent(
+            event_id=result.inference_id,
+            inference_id=result.inference_id,
+            timestamp=result.timestamp,
+            node_id=result.node_id,
+            room=result.room,
+            is_fall=True,
+            confidence=result.confidence,
+            threshold=self.threshold,
+        )
+        self.client.post(event)
+        self._last_sent_at[result.node_id] = now
+        return event
     

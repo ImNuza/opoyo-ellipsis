@@ -210,7 +210,7 @@ Change them in code and restart. `EDGE_ENABLE_UDP` in `.env` can force the UDP s
 - **Hub** — ingest, windows, classify, gate, WS fan-out.
 - **WindowBuilder** — 100-sample windows, hop 50 samples. First log line needs 100 packets per phone.
 - **StubCnn** — always no-fall. **FakeCnn** — test double that can fire a fall.
-- **EscalationGate** — log every inference; POST `/events` only if fall and confidence ≥ threshold.
+- **EscalationGate** — log every inference; POST `/events` only if fall and confidence ≥ threshold. After a POST, the same `node_id` is quiet for 3 s so overlapping windows do not open two Telegram ladders.
 
 ---
 

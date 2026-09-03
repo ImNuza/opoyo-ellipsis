@@ -70,6 +70,87 @@ def test_runtime_threshold_change(tmp_path):
     assert len(client.posted) == 1
 
 
+def test_cooldown_skips_second_post_same_node(tmp_path):
+    client = RecordingCloudClient()
+    store = InferenceLog(tmp_path / "inference.jsonl")
+    t = {"now": 0.0}
+    gate = EscalationGate(
+        threshold=0.90,
+        client=client,
+        store=store,
+        cooldown_s=3.0,
+        clock=lambda: t["now"],
+    )
+    first = gate.handle(_result(True, 0.94))
+    second = gate.handle(
+        InferenceResult(
+            inference_id="inf2",
+            timestamp=2,
+            node_id="Phone 1",
+            room=1,
+            is_fall=True,
+            confidence=0.94,
+        )
+    )
+    assert first is not None
+    assert second is None
+    assert len(client.posted) == 1
+    assert len(store.tail(5)) == 2
+
+
+def test_cooldown_expires_after_three_seconds(tmp_path):
+    client = RecordingCloudClient()
+    store = InferenceLog(tmp_path / "inference.jsonl")
+    t = {"now": 0.0}
+    gate = EscalationGate(
+        threshold=0.90,
+        client=client,
+        store=store,
+        cooldown_s=3.0,
+        clock=lambda: t["now"],
+    )
+    gate.handle(_result(True, 0.94))
+    t["now"] = 3.0
+    later = gate.handle(
+        InferenceResult(
+            inference_id="inf2",
+            timestamp=2,
+            node_id="Phone 1",
+            room=1,
+            is_fall=True,
+            confidence=0.94,
+        )
+    )
+    assert later is not None
+    assert len(client.posted) == 2
+
+
+def test_cooldown_is_per_node(tmp_path):
+    client = RecordingCloudClient()
+    store = InferenceLog(tmp_path / "inference.jsonl")
+    t = {"now": 0.0}
+    gate = EscalationGate(
+        threshold=0.90,
+        client=client,
+        store=store,
+        cooldown_s=3.0,
+        clock=lambda: t["now"],
+    )
+    gate.handle(_result(True, 0.94))
+    other = gate.handle(
+        InferenceResult(
+            inference_id="inf2",
+            timestamp=2,
+            node_id="Phone 2",
+            room=2,
+            is_fall=True,
+            confidence=0.94,
+        )
+    )
+    assert other is not None
+    assert len(client.posted) == 2
+
+
 def test_no_fall_still_logged(tmp_path):
     client = RecordingCloudClient()
     store = InferenceLog(tmp_path / "inference.jsonl")
