@@ -10,6 +10,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from shared.config import CFG
+
 
 class SensorSample(BaseModel):
     """One 50 Hz UDP packet from a phone. Extra keys are ignored."""
@@ -61,7 +63,7 @@ class InferenceResult(BaseModel):
 
 # After a Telegram ladder is opened, the same node is quiet for this long
 # (wall clock and window timestamp). Shared by the edge gate and the cloud.
-ALERT_COOLDOWN_S = 3.0
+ALERT_COOLDOWN_S = CFG.alert.cooldown_s
 
 
 class FallEvent(BaseModel):

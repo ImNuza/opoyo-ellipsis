@@ -188,23 +188,15 @@ FastAPI process. Default `http://0.0.0.0:8000` plus UDP `0.0.0.0:9000`.
 | UDP | `:9000` | JSON `SensorSample` | — (side effect: ingest) |
 | UDP | `:9001` | Binary `OPYA` PCM (16 kHz s16le) | — (side effect: ring + join on window) |
 
-No `POST /api/edge/config`. Threshold, window, hop, and cloud URL are constants in `src/edge/app.py`. No phone rename route.
+No `POST /api/edge/config`. Threshold, window, hop, ports, ladder timers, and cloud URL live in repo-root `config.yaml` (loaded at process start). Secrets stay in `.env`. No phone rename route.
 
 `GET /api/state` / WS `k: "state"` include five slots (`empty` or live phone), `combined` (`mag`, `db`, `live`, `hz`, `packets`), `dropped` (6th+ UUIDs), and `inference.latest` / `inference.log`.
 
 WS `k: "tick"` is one sample plus `combined` and the current `inference` blob.
 
-### Constants (`src/edge/app.py`)
+### Config (`config.yaml`)
 
-```
-ESCALATE_MIN_CONFIDENCE = 0.90
-WINDOW_S = 2.0
-HOP_S = 1.0
-CLOUD_URL = os.environ["CLOUD_URL"] or http://127.0.0.1:8001
-MAX_NODES = 5
-```
-
-Change them in code and restart. `EDGE_ENABLE_UDP` in `.env` can force the UDP socket off (`0` / `false` / `no`). Unset defaults to **on**.
+Edge UDP/HTTP, window/hop, fall threshold, PCM ring, cloud URL, alert cooldown, and the cloud ladder timers (`senior_wait_s`, `family_wait_s`, `careline_at_s`) are all in `config.yaml`. Edit and restart (or remount in Docker). `CLOUD_URL` and `EDGE_ENABLE_UDP` in the process environment still override the file so Compose can point the edge at `http://server:8001`. Telegram tokens stay in `.env`.
 
 ### Internals
 
@@ -282,7 +274,7 @@ On boot the edge should print `[edge] UDP listening on 0.0.0.0:9000`. Then start
 
 ### Docker
 
-Needs Docker Desktop (or another Compose v2 engine) and a filled `.env` at the repo root. Telegram ids and `EDGE_ENABLE_UDP` come from that file. Compose points the edge at the server over the internal network (`CLOUD_URL=http://server:8001`), even if `.env` still says `127.0.0.1`.
+Needs Docker Desktop (or another Compose v2 engine) and a filled `.env` at the repo root. Telegram ids come from that file. `config.yaml` is mounted into both containers (`OPOYO_CONFIG=/app/config.yaml`) so you can change knobs without rebuilding. Compose points the edge at the server over the internal network (`CLOUD_URL=http://server:8001`), even if the yaml still says `127.0.0.1`.
 
 ```bash
 docker compose up --build

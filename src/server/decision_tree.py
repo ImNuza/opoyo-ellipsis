@@ -13,8 +13,8 @@ from uuid import uuid4
 
 from server.adapters import Sender
 from server.adapters.telegram import family_ack_markup, senior_ack_markup
+from shared.config import CFG
 from shared.schemas import (
-    ALERT_COOLDOWN_S,
     AckEvent,
     EscalationCase,
     EscalationCommand,
@@ -31,9 +31,9 @@ TERMINAL = frozenset(
     }
 )
 
-SENIOR_WAIT_S = 60.0
-FAMILY_WAIT_S = 60.0
-CARELINE_AT_S = 180.0
+SENIOR_WAIT_S = CFG.server.senior_wait_s
+FAMILY_WAIT_S = CFG.server.family_wait_s
+CARELINE_AT_S = CFG.server.careline_at_s
 
 
 class Clock(Protocol):
@@ -96,7 +96,7 @@ class DecisionTree:
         next_of_kin_chat_id: str,
         secondary_chat_id: str,
         senior_chat_id: str,
-        cooldown_s: float = ALERT_COOLDOWN_S,
+        cooldown_s: float = CFG.alert.cooldown_s,
     ) -> None:
         self._clock = clock
         self._telegram = telegram

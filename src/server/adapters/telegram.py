@@ -8,6 +8,7 @@ from typing import Literal
 
 import httpx
 
+from shared.config import CFG
 from shared.schemas import AckActor, AckEvent, AckOutcome
 
 TelegramOutcome = Literal["yes", "not_fine", "taken"]
@@ -200,7 +201,11 @@ class Telegram:
         if reply_markup is not None:
             payload["reply_markup"] = reply_markup
         try:
-            response = httpx.post(self._url("sendMessage"), json=payload, timeout=8.0)
+            response = httpx.post(
+                self._url("sendMessage"),
+                json=payload,
+                timeout=CFG.server.telegram_timeout_s,
+            )
         except httpx.HTTPError:
             return False
         return response.status_code == 200
@@ -226,7 +231,9 @@ class Telegram:
             payload["text"] = text
         try:
             response = httpx.post(
-                self._url("answerCallbackQuery"), json=payload, timeout=8.0
+                self._url("answerCallbackQuery"),
+                json=payload,
+                timeout=CFG.server.telegram_timeout_s,
             )
         except httpx.HTTPError:
             return False
@@ -288,7 +295,11 @@ class Telegram:
         if self._offset is not None:
             params["offset"] = self._offset
         try:
-            response = httpx.get(self._url("getUpdates"), params=params, timeout=8.0)
+            response = httpx.get(
+                self._url("getUpdates"),
+                params=params,
+                timeout=CFG.server.telegram_timeout_s,
+            )
         except httpx.HTTPError:
             return []
         if response.status_code != 200:

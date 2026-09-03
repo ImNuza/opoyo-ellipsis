@@ -9,7 +9,6 @@ from __future__ import annotations
 import asyncio
 import json
 import time
-import os
 from collections import deque
 from pathlib import Path
 from typing import Any
@@ -25,25 +24,26 @@ from edge.infer import Classifier, load_runtime
 from edge.log import InferenceLog
 from edge.pcm_ring import PcmRing
 from edge.window import WindowBuilder
+from shared.config import CFG
 from shared.paths import REPO_ROOT
 from shared.pcm import unpack_frame
 from shared.schemas import SensorSample
 
 load_dotenv(REPO_ROOT / ".env")
 
-UDP_HOST = "0.0.0.0"
-UDP_PORT = 9000
-UDP_PCM_PORT = 9001
+UDP_HOST = CFG.edge.udp_host
+UDP_PORT = CFG.edge.udp_port
+UDP_PCM_PORT = CFG.edge.udp_pcm_port
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 DATA_DIR = Path(__file__).resolve().parent / "data"
-MAX_NODES = 5
-MAX_HISTORY = 220
-LIVE_S = 2.5  # phone drops off the dashboard after this many seconds of silence
-RATE_S = 1.5  # packet-rate window for the Hz readout
-ESCALATE_MIN_CONFIDENCE = 0.50
-WINDOW_S = 2.0
-HOP_S = 1.0
-CLOUD_URL = os.environ.get("CLOUD_URL", "http://127.0.0.1:8001").rstrip("/")
+MAX_NODES = CFG.edge.max_nodes
+MAX_HISTORY = CFG.edge.max_history
+LIVE_S = CFG.edge.live_s
+RATE_S = CFG.edge.rate_s
+ESCALATE_MIN_CONFIDENCE = CFG.edge.escalate_min_confidence
+WINDOW_S = CFG.edge.window_s
+HOP_S = CFG.edge.hop_s
+CLOUD_URL = CFG.edge.cloud_url
 
 
 def _num(packet: dict[str, Any], key: str, default: float = 0.0) -> float:
@@ -175,7 +175,7 @@ class Hub:
             builder = WindowBuilder(
                 window_s=WINDOW_S,
                 hop_s=HOP_S,
-                hz=50.0,
+                hz=CFG.edge.sensor_hz,
                 node_id=node.name,
                 room=node.slot,
             )
@@ -352,7 +352,10 @@ class Hub:
         async with self.lock:
             ring = self.pcm_rings.get(node_id)
             if ring is None:
-                ring = PcmRing()
+                ring = PcmRing(
+                    rate=CFG.edge.pcm_rate_hz,
+                    seconds=CFG.edge.pcm_ring_s,
+                )
                 self.pcm_rings[node_id] = ring
             ring.append(t_ms, pcm, seq=seq)
 
@@ -389,13 +392,9 @@ def create_app(
         gate=gate,
         store=store,
     )
-    # Unset → listen. Explicit 0/false/no → off. Tests pass enable_udp=False.
+    # Unset → config / EDGE_ENABLE_UDP. Tests pass enable_udp=False.
     if enable_udp is None:
-        raw = os.environ.get("EDGE_ENABLE_UDP")
-        if raw is None:
-            udp_on = True
-        else:
-            udp_on = raw.strip().lower() not in {"0", "false", "no", ""}
+        udp_on = bool(CFG.edge.enable_udp)
     else:
         udp_on = bool(enable_udp)
     bind_host = UDP_HOST if udp_host is None else udp_host

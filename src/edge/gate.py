@@ -5,9 +5,10 @@ from __future__ import annotations
 import time
 from typing import Callable, Protocol
 
-from shared.schemas import ALERT_COOLDOWN_S, FallEvent, InferenceResult
+from shared.config import CFG
+from shared.schemas import FallEvent, InferenceResult
 
-ESCALATE_COOLDOWN_S = ALERT_COOLDOWN_S
+ESCALATE_COOLDOWN_S = CFG.alert.cooldown_s
 
 
 class CloudClient(Protocol):
@@ -35,7 +36,7 @@ class HttpCloudClient:
             httpx.post(
                 f"{self.base_url}/events",
                 json=event.model_dump(),
-                timeout=8.0,
+                timeout=CFG.edge.cloud_post_timeout_s,
             )
         except Exception:
             return

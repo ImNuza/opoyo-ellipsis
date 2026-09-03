@@ -13,6 +13,7 @@ RUN apt-get update \
 COPY docker/requirements-server.txt /tmp/requirements-server.txt
 RUN pip install --no-cache-dir -r /tmp/requirements-server.txt
 
+COPY config.yaml /app/config.yaml
 COPY src/shared /app/src/shared
 COPY src/server /app/src/server
 

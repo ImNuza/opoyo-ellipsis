@@ -1,0 +1,35 @@
+# Runtime knobs for edge and cloud. Secrets stay in .env.
+# Local Python loads this from the repo root (or OPOYO_CONFIG).
+# Docker Compose mounts this file into both containers.
+
+edge:
+  http_host: "0.0.0.0"
+  http_port: 8000
+  udp_host: "0.0.0.0"
+  udp_port: 9000
+  udp_pcm_port: 9001
+  enable_udp: true
+  cloud_url: "http://127.0.0.1:8001"
+  cloud_post_timeout_s: 8.0
+  max_nodes: 5
+  max_history: 220
+  live_s: 2.5          # dashboard drops a phone after this many seconds silent
+  rate_s: 1.5          # packet-rate window for the Hz readout
+  escalate_min_confidence: 0.50
+  window_s: 2.0
+  hop_s: 1.0
+  sensor_hz: 50.0
+  pcm_rate_hz: 16000.0
+  pcm_ring_s: 4.0
+
+server:
+  http_host: "0.0.0.0"
+  http_port: 8001
+  senior_wait_s: 60.0
+  family_wait_s: 60.0
+  careline_at_s: 180.0
+  tick_s: 0.5
+  telegram_timeout_s: 8.0
+
+alert:
+  cooldown_s: 3.0      # wall clock and window time after a POST / Telegram send

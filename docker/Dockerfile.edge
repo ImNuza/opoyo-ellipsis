@@ -17,6 +17,7 @@ RUN apt-get update \
 COPY requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
+COPY config.yaml /app/config.yaml
 COPY src/shared /app/src/shared
 COPY src/edge /app/src/edge
 COPY src/ml/models /app/src/ml/models

@@ -7,6 +7,11 @@ services:
       dockerfile: docker/Dockerfile.server
     env_file:
       - .env
+    environment:
+      OPOYO_ROOT: /app
+      OPOYO_CONFIG: /app/config.yaml
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
     ports:
       - "8001:8001"
     restart: unless-stopped
@@ -22,6 +27,7 @@ services:
       CLOUD_URL: http://server:8001
       EDGE_ENABLE_UDP: "1"
       OPOYO_ROOT: /app
+      OPOYO_CONFIG: /app/config.yaml
     ports:
       - "8000:8000"
       - "9000:9000/udp"
@@ -30,6 +36,7 @@ services:
       server:
         condition: service_healthy
     volumes:
+      - ./config.yaml:/app/config.yaml:ro
       - edge-data:/app/src/edge/data
     restart: unless-stopped
 

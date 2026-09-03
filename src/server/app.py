@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse
 
 from server.adapters.telegram import Telegram, TelegramAck
 from server.decision_tree import DecisionTree, SystemClock
+from shared.config import CFG
 from shared.paths import REPO_ROOT
 from shared.schemas import AckEvent, EscalationCase, FallEvent
 
@@ -165,7 +166,7 @@ def create_app(tree: DecisionTree | None = None) -> FastAPI:
         # Senior / family button and text replies are polled from Telegram on the same tick.
         async def loop() -> None:
             while True:
-                await asyncio.sleep(0.5)
+                await asyncio.sleep(CFG.server.tick_s)
                 try:
                     escalation.on_tick()
                     inbox = app.state.telegram
