@@ -23,7 +23,7 @@ services:
     env_file:
       - .env
     environment:
-      # Compose network name, not localhost from .env
+      # Service DNS name on the Compose network, not 127.0.0.1 from .env.
       CLOUD_URL: http://server:8001
       EDGE_ENABLE_UDP: "1"
       OPOYO_ROOT: /app

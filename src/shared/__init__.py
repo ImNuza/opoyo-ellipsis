@@ -1,4 +1,8 @@
-"""Shared Pydantic models: SensorSample → SensorWindow → InferenceResult → FallEvent."""
+"""Wire models shared by phones, the edge, and the cloud.
+
+The public names are the Pydantic types on the UDP and HTTP paths:
+SensorSample, SensorWindow, InferenceResult, FallEvent, and EscalationCase.
+"""
 
 from shared.schemas import (
     AckEvent,

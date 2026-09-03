@@ -1,4 +1,7 @@
-"""Fall classifiers. Live path is FusionCnn; StubCnn/FakeCnn are test doubles."""
+"""Fall classifiers.
+
+The live path is FusionCnn or JointCnn. StubCnn and FakeCnn are test doubles.
+"""
 
 from __future__ import annotations
 
@@ -33,7 +36,7 @@ def _result(window: SensorWindow, is_fall: bool, confidence: float) -> Inference
 
 
 class StubCnn:
-    """Placeholder. Same output shape as a trained model; always no-fall."""
+    """Placeholder with the same output shape as a trained model. Always no-fall."""
 
     def infer(self, window: SensorWindow) -> InferenceResult:
         return _result(window, False, 0.0)
@@ -50,9 +53,9 @@ class FakeCnn:
         return _result(window, self.is_fall, self.confidence)
 
 
-# Point TF Hub at the copy committed in models/tfhub. Without this the first
-# inference downloads from tfhub.dev, so a slow venue network turns into a
-# silent fallback to the vibration-only head in the middle of a demo.
+# Point TF Hub at the copy committed in models/tfhub. Without this, the first
+# inference downloads from tfhub.dev and a slow venue network becomes a silent
+# fallback to the vibration-only head in the middle of a demo.
 _CACHE = MODELS / "tfhub"
 if _CACHE.is_dir():
     os.environ.setdefault("TFHUB_CACHE_DIR", str(_CACHE))
@@ -68,6 +71,7 @@ def _get_yamnet():
 
 
 def _to_16k(x: np.ndarray, fs: float) -> np.ndarray:
+    """Resample to 16 kHz and peak-normalize into [-1, 1] for YAMNet."""
     x = np.asarray(x, dtype=np.float32).ravel()
     if fs <= 0 or abs(fs - 16000) < 1:
         y = x

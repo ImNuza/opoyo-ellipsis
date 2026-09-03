@@ -1,7 +1,7 @@
-"""Wire and log models shared by phone packets, edge inference, and cloud cases.
+"""Pydantic models on the phone → edge → cloud path.
 
-Phones emit SensorSample. The edge builds SensorWindow → InferenceResult.
-Only a gated InferenceResult becomes FallEvent and leaves the machine.
+Phones emit SensorSample. The edge builds SensorWindow and InferenceResult.
+Only a gated InferenceResult becomes a FallEvent that leaves this machine.
 """
 
 from __future__ import annotations
@@ -14,7 +14,10 @@ from shared.config import CFG
 
 
 class SensorSample(BaseModel):
-    """One 50 Hz UDP packet from a phone. Extra keys are ignored."""
+    """One 50 Hz UDP packet from a phone.
+
+    Extra keys are ignored so firmware can add fields without breaking ingest.
+    """
 
     model_config = ConfigDict(extra="ignore")
 
@@ -30,10 +33,11 @@ class SensorSample(BaseModel):
 
 
 class SensorWindow(BaseModel):
-    """2 s / 50 Hz slice for the classifier. node_id is Phone N; room is slot 1–5.
+    """Classifier input: a 2 s / 50 Hz slice of one phone.
 
-    pcm is the time-aligned 16 kHz clip from PcmRing, in [-1, 1]. Empty if the
-    WAV channel missed this window (classifier then uses mag only).
+    ``node_id`` is the dashboard name (Phone N). ``room`` is the slot 1–5.
+    ``pcm`` is the time-aligned 16 kHz clip from PcmRing, in [-1, 1]. Empty if
+    the WAV channel missed this window; the classifier then uses mag only.
     """
 
     node_id: str
@@ -51,7 +55,10 @@ class SensorWindow(BaseModel):
 
 
 class InferenceResult(BaseModel):
-    """Classifier output. Logged always; posted to the cloud only if gated."""
+    """Classifier output.
+
+    Every window is logged. The cloud sees this only after the escalation gate.
+    """
 
     inference_id: str
     timestamp: int
@@ -61,13 +68,15 @@ class InferenceResult(BaseModel):
     confidence: float = Field(ge=0.0, le=1.0)
 
 
-# After a Telegram ladder is opened, the same node is quiet for this long
-# (wall clock and window timestamp). Shared by the edge gate and the cloud.
+# Re-export so callers that imported this name from schemas keep working.
 ALERT_COOLDOWN_S = CFG.alert.cooldown_s
 
 
 class FallEvent(BaseModel):
-    """Gated fall. is_fall is always True; threshold is the edge gate that fired."""
+    """Gated fall posted to the cloud.
+
+    ``is_fall`` is always True. ``threshold`` is the edge gate that fired.
+    """
 
     event_id: str
     inference_id: str
@@ -103,6 +112,8 @@ class AckEvent(BaseModel):
 
 
 class EscalationCommand(BaseModel):
+    """One rung the tree dispatched or recorded."""
+
     case_id: str
     rung: EscalationRung
     at_s: int
@@ -122,7 +133,16 @@ class EscalationCase(BaseModel):
 
 
 def fall_event_from_inference(result: InferenceResult, threshold: float) -> FallEvent:
-    """Copy inference identity into a FallEvent. Caller must already have gated."""
+    """Copy inference identity into a FallEvent.
+
+    Args:
+        result: Gated classifier output. The caller must already have applied
+            the confidence threshold.
+        threshold: Edge gate that allowed this post.
+
+    Returns:
+        FallEvent with the same ids, room, and confidence.
+    """
     return FallEvent(
         event_id=result.inference_id,
         inference_id=result.inference_id,

@@ -1,4 +1,8 @@
-"""Time-indexed 16 kHz PCM ring. Slice by phone unix ms, not arrival order."""
+"""Time-indexed PCM ring.
+
+Slices by phone unix milliseconds, not datagram arrival order, so a late UDP
+frame still lands at the correct offset in the window.
+"""
 
 from __future__ import annotations
 
@@ -6,6 +10,8 @@ import numpy as np
 
 
 class PcmRing:
+    """Fixed-capacity int16 ring addressed by phone timestamps."""
+
     def __init__(self, rate: float = 16000.0, seconds: float = 4.0) -> None:
         self.rate = float(rate)
         self.cap = max(1, int(round(self.rate * seconds)))
@@ -33,7 +39,8 @@ class PcmRing:
         self.n = keep
 
     def append(self, t_ms: int, pcm_s16: bytes, seq: int = 0) -> None:
-        del seq
+        """Write a frame at ``t_ms``. Gaps are zero-filled; overflow drops the left."""
+        del seq  # Sequence is for debugging on the phone; the ring is time-based.
         pcm = np.frombuffer(pcm_s16, dtype=np.int16).copy()
         if pcm.size == 0:
             return
@@ -72,11 +79,17 @@ class PcmRing:
         self.n = max(self.n, end)
 
     def buffered_ms(self) -> float:
+        """Return how many milliseconds of audio are currently held."""
         if self.n <= 0:
             return 0.0
         return self.n * 1000.0 / self.rate
 
     def slice_ms(self, t_start_ms: int, t_end_ms: int) -> tuple[np.ndarray, float]:
+        """Return a float32 clip in [-1, 1] and the fraction of samples present.
+
+        Missing samples stay zero. Coverage is 0.0 when the ring has nothing
+        overlapping the request, which is the fail-open path for the classifier.
+        """
         empty = np.zeros(0, dtype=np.float32)
         if self.t0_ms is None or self.n <= 0:
             return empty, 0.0

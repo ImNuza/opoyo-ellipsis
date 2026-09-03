@@ -48,7 +48,10 @@ def _newest_open(
     tree: DecisionTree,
     states: frozenset[str],
 ) -> str | None:
-    """Newest case in ``states``. Used when a typed reply has no case_id."""
+    """Return the newest case in ``states``.
+
+    Used when a typed Telegram reply has no ``case_id`` on the callback.
+    """
     open_cases = [case for case in tree.cases.values() if case.state in states]
     if not open_cases:
         return None
@@ -71,7 +74,16 @@ def _apply_telegram_ack(
     telegram: Telegram,
     item: TelegramAck,
 ) -> EscalationCase | None:
-    """Bind a Telegram reply to a case and confirm back in-chat."""
+    """Bind a Telegram reply to a case and confirm back in chat.
+
+    Args:
+        tree: Live decision tree.
+        telegram: Bot client used for confirmations.
+        item: Parsed button tap or typed reply.
+
+    Returns:
+        Updated case, or None if no matching open case exists.
+    """
     if item.actor == "family":
         case_id = item.case_id or _newest_family_open(tree)
     else:
@@ -162,8 +174,7 @@ def create_app(tree: DecisionTree | None = None) -> FastAPI:
 
     @app.on_event("startup")
     async def _ticks() -> None:
-        # Secondary Telegram at t+60 and CareLine stub at t+180 live here, not on a route.
-        # Senior / family button and text replies are polled from Telegram on the same tick.
+        # Ladder timers and Telegram polling live on this loop, not on an HTTP route.
         async def loop() -> None:
             while True:
                 await asyncio.sleep(CFG.server.tick_s)

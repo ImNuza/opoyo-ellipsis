@@ -9,7 +9,8 @@ from shared.schemas import InferenceResult
 
 
 class InferenceLog:
-    """Append-only file plus a 500-row ring for the dashboard tail."""
+    """Append-only JSONL file plus an in-memory ring for the dashboard tail."""
+
     def __init__(self, path: Path, maxlen: int = 500) -> None:
         self.path = path
         self._ring: deque[InferenceResult] = deque(maxlen=maxlen)
@@ -22,11 +23,13 @@ class InferenceLog:
                 self._ring.append(InferenceResult.model_validate_json(stripped))
 
     def append(self, result: InferenceResult) -> None:
+        """Write one inference to the ring and the JSONL file."""
         self._ring.append(result)
         with self.path.open("a", encoding="utf-8") as handle:
             handle.write(result.model_dump_json() + "\n")
 
     def tail(self, n: int) -> list[InferenceResult]:
+        """Return the last ``n`` results, oldest first."""
         items = list(self._ring)
         if n >= len(items):
             return items

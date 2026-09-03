@@ -1,4 +1,4 @@
-"""Log every inference; POST FallEvent to the cloud only when gated."""
+"""Log every inference and POST a FallEvent to the cloud only when gated."""
 
 from __future__ import annotations
 
@@ -24,7 +24,10 @@ class RecordingCloudClient:
 
 
 class HttpCloudClient:
-    """POST /events on the cloud. Failures are swallowed so ingest never blocks."""
+    """POST ``/events`` on the cloud.
+
+    Failures are swallowed so a slow or down cloud never blocks UDP ingest.
+    """
 
     def __init__(self, base_url: str) -> None:
         self.base_url = base_url.rstrip("/")
@@ -43,6 +46,15 @@ class HttpCloudClient:
 
 
 def should_escalate(result: InferenceResult, threshold: float) -> bool:
+    """Return whether this inference should open a cloud case.
+
+    Args:
+        result: Classifier output for one window.
+        threshold: Minimum confidence, typically ``CFG.edge.escalate_min_confidence``.
+
+    Returns:
+        True only when ``is_fall`` is set and confidence meets the threshold.
+    """
     return bool(result.is_fall) and result.confidence >= threshold
 
 
@@ -73,17 +85,27 @@ class EscalationGate:
         self._last_event_ms: dict[str, int] = {}
 
     def _cooling_down(self, result: InferenceResult) -> bool:
+        """Return True if this node already posted within the cooldown."""
         last_wall = self._last_sent_at.get(result.node_id)
         if last_wall is not None and (self._clock() - last_wall) < self.cooldown_s:
             return True
         last_ms = self._last_event_ms.get(result.node_id)
         if last_ms is not None:
             dt_ms = result.timestamp - last_ms
+            # Negative dt means a test or clock skew; do not treat it as cooldown.
             if 0 <= dt_ms < self.cooldown_s * 1000.0:
                 return True
         return False
 
     def handle(self, result: InferenceResult) -> FallEvent | None:
+        """Log ``result`` and maybe POST a FallEvent.
+
+        Args:
+            result: Classifier output. Always appended when a store is set.
+
+        Returns:
+            The posted FallEvent, or None if the gate or cooldown blocked it.
+        """
         append = getattr(self.store, "append", None)
         if callable(append):
             append(result)
@@ -102,7 +124,7 @@ class EscalationGate:
             threshold=self.threshold,
         )
         # Stamp before POST so a slow Telegram send cannot open a second
-        # window; stamp again after so the 3 s pause starts when it returns.
+        # window. Stamp again after so the pause starts when the POST returns.
         self._last_sent_at[result.node_id] = self._clock()
         self._last_event_ms[result.node_id] = result.timestamp
         self.client.post(event)

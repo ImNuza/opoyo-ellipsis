@@ -21,7 +21,17 @@ FEATURE_NAMES = ("rms", "crest", "decay_ms", "db_med", "low", "cent")
 
 
 def peak_window(mag: np.ndarray, fs: float, pre_s: float = 0.5, post_s: float = 1.5) -> np.ndarray:
-    """Cut a fixed-length clip centred on the largest excursion."""
+    """Cut a fixed-length clip centred on the largest excursion.
+
+    Args:
+        mag: Magnitude samples for the window.
+        fs: Sample rate in Hz.
+        pre_s: Seconds kept before the peak.
+        post_s: Seconds kept after the peak.
+
+    Returns:
+        Clip of length ``pre_s + post_s``, zero-padded if the source is short.
+    """
     pre = int(fs * pre_s)
     post = int(fs * post_s)
     i = int(np.argmax(np.abs(mag))) if mag.size else 0
@@ -35,7 +45,14 @@ def peak_window(mag: np.ndarray, fs: float, pre_s: float = 0.5, post_s: float = 
 
 
 def peak_normalize(w: np.ndarray) -> np.ndarray:
-    """Kill range / carpet gain. Shape only."""
+    """Divide by peak absolute value so range and carpet gain drop out.
+
+    Args:
+        w: Raw or windowed magnitude.
+
+    Returns:
+        Shape-only clip. Unchanged when the peak is numerically zero.
+    """
     w = np.asarray(w, dtype=np.float64)
     pk = float(np.max(np.abs(w))) if w.size else 0.0
     if pk < 1e-12:
@@ -44,7 +61,16 @@ def peak_normalize(w: np.ndarray) -> np.ndarray:
 
 
 def crest_factor(w: np.ndarray) -> float:
-    """Peak-to-RMS of the RAW window. Dimensionless, so normalisation-free."""
+    """Peak-to-RMS of the raw window.
+
+    Dimensionless, so this is computed before peak normalisation.
+
+    Args:
+        w: Un-normalised magnitude clip.
+
+    Returns:
+        Crest factor, or 0.0 for an empty or silent clip.
+    """
     w = np.asarray(w, dtype=np.float64)
     if w.size == 0:
         return 0.0
@@ -53,6 +79,7 @@ def crest_factor(w: np.ndarray) -> float:
 
 
 def spec_placeholder(x: np.ndarray, fs: float) -> tuple[np.ndarray, np.ndarray]:
+    """Hann-windowed rFFT magnitude and frequency axis."""
     x = np.asarray(x, dtype=np.float64)
     if x.size < 8 or fs <= 0:
         return np.zeros(0), np.zeros(0)
@@ -62,7 +89,16 @@ def spec_placeholder(x: np.ndarray, fs: float) -> tuple[np.ndarray, np.ndarray]:
 
 
 def vector(mag: np.ndarray, db: np.ndarray, fs: float) -> np.ndarray:
-    """Feature vector for one window. Order matches FEATURE_NAMES."""
+    """Build the six-feature vector for one window.
+
+    Args:
+        mag: Magnitude samples.
+        db: Sound-level samples. Values at or below -100 are treated as missing.
+        fs: Sample rate in Hz.
+
+    Returns:
+        Array in ``FEATURE_NAMES`` order.
+    """
     raw = peak_window(np.asarray(mag, dtype=np.float64), fs)
     crest = crest_factor(raw)
     w = peak_normalize(raw)
@@ -81,6 +117,7 @@ def vector(mag: np.ndarray, db: np.ndarray, fs: float) -> np.ndarray:
     cent = float((hz * spec).sum() / tot) if spec.size else 0.0
 
     db = np.asarray(db, dtype=np.float64)
+    # Phones send -120 when the mic is unused; drop that sentinel from the median.
     db_ok = db[db > -100]
     db_med = float(np.median(db_ok)) if db_ok.size else -160.0
 
@@ -88,5 +125,5 @@ def vector(mag: np.ndarray, db: np.ndarray, fs: float) -> np.ndarray:
 
 
 def clip_of(mag: np.ndarray, fs: float) -> np.ndarray:
-    """Peak-normalised clip, for the augmentation / CNN experiments."""
+    """Return a peak-normalised clip for augmentation and CNN experiments."""
     return peak_normalize(peak_window(mag, fs))

@@ -1,4 +1,8 @@
-"""Binary PCM frames for phone → edge UDP :9001. Not a WAV/RIFF container."""
+"""Binary PCM frames for phone to edge UDP :9001.
+
+This is not a WAV or RIFF container. The header is a fixed 37-byte ``OPYA``
+layout so a datagram can carry 16 kHz int16 without a file wrapper.
+"""
 
 from __future__ import annotations
 
@@ -10,6 +14,7 @@ PCM_MAGIC = b"OPYA"
 PCM_VERSION = 1
 PCM_RATE = 16000
 HEADER_SIZE = 37
+# Little-endian: magic, version, seq, t_ms, uuid, rate, sample count.
 _HEADER = struct.Struct("<4sBIQ16sHH")
 
 
@@ -35,6 +40,18 @@ def pack_frame(
     samples: bytes,
     rate: int = PCM_RATE,
 ) -> bytes:
+    """Pack a PCM datagram.
+
+    Args:
+        node_id: Phone UUID, same as SensorSample.id.
+        seq: Monotonic frame counter from the phone.
+        t_ms: Phone unix time in milliseconds for the first sample.
+        samples: Little-endian int16 bytes.
+        rate: Sample rate in Hz. YAMNet requires 16000.
+
+    Returns:
+        Header plus sample payload.
+    """
     n = len(samples) // 2
     header = _HEADER.pack(
         PCM_MAGIC,
@@ -49,6 +66,14 @@ def pack_frame(
 
 
 def unpack_frame(data: bytes) -> PcmFrame | None:
+    """Parse one datagram. Returns None if the header is truncated or invalid.
+
+    Args:
+        data: UDP payload.
+
+    Returns:
+        PcmFrame, or None so the edge can fail open on a bad packet.
+    """
     if len(data) < HEADER_SIZE:
         return None
     try:

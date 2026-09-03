@@ -7,7 +7,16 @@ import math
 
 
 def rfft_mag(x: list[float], hz: float) -> tuple[list[float], list[float]]:
-    """Return (|X[k]| for k=0..n//2, frequency in Hz). Empty in → empty out."""
+    """Return real-FFT magnitudes and frequencies.
+
+    Args:
+        x: Time-domain samples.
+        hz: Sample rate.
+
+    Returns:
+        ``(|X[k]| for k=0..n//2, frequency in Hz)``. Empty input yields empty
+        lists.
+    """
     n = len(x)
     if n < 8 or hz <= 0:
         return [], []

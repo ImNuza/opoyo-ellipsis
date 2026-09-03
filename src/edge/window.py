@@ -1,4 +1,7 @@
-"""Sliding 2 s windows (1 s hop) over a single phone's 50 Hz stream."""
+"""Sliding windows over a single phone's 50 Hz stream.
+
+Defaults are 2 s windows and a 1 s hop (100 samples, hop 50).
+"""
 
 from __future__ import annotations
 
@@ -6,7 +9,7 @@ from shared.schemas import SensorSample, SensorWindow
 
 
 class WindowBuilder:
-    """Returns a SensorWindow every hop once 100 samples have arrived; else None."""
+    """Return a SensorWindow every hop once a full window of samples has arrived."""
     def __init__(
         self,
         window_s: float = 2.0,
@@ -37,6 +40,16 @@ class WindowBuilder:
         node_id: str | None = None,
         room: int | None = None,
     ) -> SensorWindow | None:
+        """Append one sample and emit a window when the hop is due.
+
+        Args:
+            sample: Latest 50 Hz packet.
+            node_id: Optional dashboard name (Phone N).
+            room: Optional slot number.
+
+        Returns:
+            SensorWindow, or None until ``window_n`` samples sit in the buffer.
+        """
         if node_id is not None:
             self.node_id = node_id
         if room is not None:

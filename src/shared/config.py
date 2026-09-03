@@ -1,4 +1,9 @@
-"""Load repo-root ``config.yaml``. Secrets stay in the process environment / ``.env``."""
+"""Load repo-root ``config.yaml``.
+
+Secrets stay in the process environment or ``.env``. ``CLOUD_URL`` and
+``EDGE_ENABLE_UDP`` override the file so Docker Compose can rewire the edge
+without editing YAML.
+"""
 
 from __future__ import annotations
 
@@ -11,10 +16,14 @@ from pydantic import BaseModel, Field
 
 from shared.paths import REPO_ROOT
 
+# Load before reading env overrides so a local ``.env`` applies. Compose-set
+# variables already exist and are not overwritten.
 load_dotenv(REPO_ROOT / ".env")
 
 
 class EdgeSettings(BaseModel):
+    """UDP ingest, windowing, and cloud POST settings for the edge process."""
+
     http_host: str = "0.0.0.0"
     http_port: int = 8000
     udp_host: str = "0.0.0.0"
@@ -36,6 +45,8 @@ class EdgeSettings(BaseModel):
 
 
 class ServerSettings(BaseModel):
+    """HTTP and escalation-ladder settings for the cloud process."""
+
     http_host: str = "0.0.0.0"
     http_port: int = 8001
     senior_wait_s: float = 60.0
@@ -46,16 +57,25 @@ class ServerSettings(BaseModel):
 
 
 class AlertSettings(BaseModel):
+    """Shared cooldown after a gated fall is posted."""
+
     cooldown_s: float = 3.0
 
 
 class Settings(BaseModel):
+    """Root settings object matching ``config.yaml``."""
+
     edge: EdgeSettings = Field(default_factory=EdgeSettings)
     server: ServerSettings = Field(default_factory=ServerSettings)
     alert: AlertSettings = Field(default_factory=AlertSettings)
 
 
 def config_path() -> Path:
+    """Return the YAML path from ``OPOYO_CONFIG`` or the repo root.
+
+    Returns:
+        Absolute or relative path to ``config.yaml``.
+    """
     raw = os.environ.get("OPOYO_CONFIG")
     if raw:
         return Path(raw)
@@ -63,10 +83,21 @@ def config_path() -> Path:
 
 
 def _as_bool(raw: str) -> bool:
+    """Parse a loose boolean from an environment string."""
     return raw.strip().lower() not in {"0", "false", "no", ""}
 
 
 def load_settings(path: Path | None = None) -> Settings:
+    """Parse YAML and apply environment overrides.
+
+    Args:
+        path: Optional file to load. Defaults to :func:`config_path`. Missing
+            files yield built-in defaults.
+
+    Returns:
+        Validated settings. ``CLOUD_URL`` and ``EDGE_ENABLE_UDP`` win over YAML
+        when set, which is how Compose points the edge at ``http://server:8001``.
+    """
     file = path or config_path()
     data: dict = {}
     if file.is_file():

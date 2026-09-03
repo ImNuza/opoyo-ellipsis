@@ -1,4 +1,4 @@
-"""Telegram Bot API transport: outbound alerts and inbound senior/family acks."""
+"""Telegram Bot API transport for outbound alerts and inbound acks."""
 
 from __future__ import annotations
 
@@ -33,6 +33,7 @@ _CALLBACK_OUTCOMES = frozenset({"yes", "not_fine", "taken"})
 
 
 def _clean_text(text: str) -> tuple[str, str]:
+    """Return spaced and compact lowercase forms for phrase matching."""
     raw = (text or "").strip().lower()
     cleaned = "".join(ch for ch in raw if ch.isalnum() or ch.isspace() or ch == "'")
     cleaned = " ".join(cleaned.split())
@@ -41,6 +42,7 @@ def _clean_text(text: str) -> tuple[str, str]:
 
 
 def _actor_for_outcome(outcome: TelegramOutcome) -> AckActor:
+    """Map callback outcome to actor. ``taken`` is family; the rest are senior."""
     return "family" if outcome == "taken" else "senior"
 
 
@@ -65,7 +67,11 @@ class TelegramAck:
 
 
 def senior_ack_markup(case_id: str) -> dict:
-    """Inline keyboard posted with the senior check-in."""
+    """Return the inline keyboard posted with the senior check-in.
+
+    Args:
+        case_id: Escalation case hex id, embedded in callback_data.
+    """
     return {
         "inline_keyboard": [
             [
@@ -77,7 +83,11 @@ def senior_ack_markup(case_id: str) -> dict:
 
 
 def family_ack_markup(case_id: str) -> dict:
-    """Inline keyboard posted with the family fall alert."""
+    """Return the inline keyboard posted with the family fall alert.
+
+    Args:
+        case_id: Escalation case hex id, embedded in callback_data.
+    """
     return {
         "inline_keyboard": [
             [{"text": "I'm on it", "callback_data": f"ack:{case_id}:taken"}]

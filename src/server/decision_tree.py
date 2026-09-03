@@ -73,7 +73,11 @@ def fall_message(event: FallEvent) -> str:
 def senior_check_message(event: FallEvent) -> str:
     """Ask the senior over Telegram whether they are okay.
 
-    A ``yes`` ack closes the case as all-clear.
+    Args:
+        event: Gated fall from the edge.
+
+    Returns:
+        Check-in copy. A yes ack closes the case as all-clear.
     """
     ts = datetime.fromtimestamp(event.timestamp / 1000.0).strftime(
         "%Y-%m-%d %H:%M:%S"
@@ -156,8 +160,8 @@ class DecisionTree:
         )
         self.cases[case.case_id] = case
         self._by_event[event.event_id] = case.case_id
-        # Stamp before Telegram so a second POST cannot sneak a duplicate
-        # ladder in while sendMessage is still in flight.
+        # Stamp before Telegram so a second POST cannot open a duplicate
+        # ladder while sendMessage is still in flight.
         self._last_alert_at[event.node_id] = now
         self._last_alert_ms[event.node_id] = event.timestamp
         self._last_case[event.node_id] = case.case_id

@@ -1,7 +1,7 @@
-"""Edge FastAPI: UDP ingest, windowed inference, dashboard, gated POST to cloud.
+"""Edge FastAPI: UDP ingest, windowed inference, dashboard, gated cloud POST.
 
-HTTP :8000 serves the dashboard and /ws ticks. Phones send SensorSample JSON to
-UDP :9000 and 16 kHz PCM to :9001. Raw axes and PCM never leave this process.
+HTTP serves the dashboard and ``/ws`` ticks. Phones send SensorSample JSON on
+UDP and 16 kHz PCM on the PCM port. Raw axes and PCM never leave this process.
 """
 
 from __future__ import annotations
@@ -47,14 +47,16 @@ CLOUD_URL = CFG.edge.cloud_url
 
 
 def _num(packet: dict[str, Any], key: str, default: float = 0.0) -> float:
+    """Parse a float from a packet, treating NaN as ``default``."""
     try:
         value = float(packet.get(key, default))
     except (TypeError, ValueError):
         return default
-    return value if value == value else default
+    return value if value == value else default  # NaN is not equal to itself.
 
 
 def _node_id(packet: dict[str, Any], addr: tuple[str, int]) -> str:
+    """Return the phone UUID, or the sender IP if the packet omitted ``id``."""
     raw = packet.get("id") or packet.get("node")
     if isinstance(raw, str):
         cleaned = raw.strip()[:64]
@@ -118,7 +120,7 @@ class Node:
 
 
 class Hub:
-    """In-memory coordinator: nodes, windows, classifier, gate, WebSocket clients."""
+    """In-memory coordinator for nodes, windows, classifier, gate, and WebSockets."""
 
     def __init__(
         self,
@@ -230,14 +232,16 @@ class Hub:
                     "db": combined["db"],
                 }
             )
-            # Inference identity is Phone N / room slot, not the device UUID.
+            # Classifier identity is Phone N / room slot, not the device UUID.
             window = self._builder(nid, node).push(
                 sample, node_id=node.name, room=node.slot
             )
             if window is not None:
                 clip, _coverage = self._join_pcm(nid, window.t_start_ms, window.t_end_ms)
                 pcm = clip.tolist() if hasattr(clip, "tolist") else list(clip)
-                window = window.model_copy(update={"pcm": pcm, "pcm_hz": 16000.0})
+                window = window.model_copy(
+                    update={"pcm": pcm, "pcm_hz": CFG.edge.pcm_rate_hz}
+                )
                 result = self.classifier.infer(window)
                 self.gate.handle(result)
                 self.latest_inference = result.model_dump()
@@ -318,7 +322,11 @@ class Hub:
             }
 
     def _join_pcm(self, nid: str, t_start_ms: int, t_end_ms: int):
-        """Slice PCM for this window. Returns (clip in [-1,1], coverage)."""
+        """Slice PCM for this window.
+
+        Returns:
+            ``(clip in [-1, 1], coverage)``. Empty clip when the ring missed.
+        """
         ring = self.pcm_rings.get(nid)
         if ring is None:
             self.last_pcm[nid] = {
@@ -345,7 +353,11 @@ class Hub:
         pcm: bytes,
         rate: int = 16000,
     ) -> None:
-        """Append a PCM frame. Does not allocate a phone slot; JSON ingest does."""
+        """Append a PCM frame.
+
+        Does not allocate a phone slot. JSON ingest owns slot assignment so a
+        PCM-only flood cannot occupy the five dashboard seats.
+        """
         del rate
         if not node_id:
             return
@@ -378,7 +390,20 @@ def create_app(
     udp_port: int | None = None,
     udp_pcm_port: int | None = None,
 ) -> FastAPI:
-    """Build the edge app. Tests inject classifier, cloud_client, log_path, UDP."""
+    """Build the edge FastAPI app.
+
+    Args:
+        classifier: Injected model. Defaults to :func:`load_runtime`.
+        cloud_client: Injected FallEvent sink. Defaults to HTTP ``CLOUD_URL``.
+        log_path: Inference JSONL path. Defaults to ``edge/data/inference.jsonl``.
+        enable_udp: When None, uses ``config.yaml`` / ``EDGE_ENABLE_UDP``.
+        udp_host: Bind address. Defaults to ``CFG.edge.udp_host``.
+        udp_port: JSON UDP port. ``0`` asks the OS for an ephemeral port (tests).
+        udp_pcm_port: PCM UDP port.
+
+    Returns:
+        Configured FastAPI application.
+    """
     store = InferenceLog(log_path or (DATA_DIR / "inference.jsonl"))
     client = cloud_client or HttpCloudClient(CLOUD_URL)
     gate = EscalationGate(
@@ -392,7 +417,7 @@ def create_app(
         gate=gate,
         store=store,
     )
-    # Unset → config / EDGE_ENABLE_UDP. Tests pass enable_udp=False.
+    # Tests pass enable_udp=False so they do not bind the live 9000/9001 ports.
     if enable_udp is None:
         udp_on = bool(CFG.edge.enable_udp)
     else:
@@ -420,7 +445,7 @@ def create_app(
             if not isinstance(payload, dict):
                 return
             payload["from"] = f"{addr[0]}:{addr[1]}"
-            # Hub.ingest requires _nid; phones only send id.
+            # Hub.ingest requires ``_nid``. Phones only send ``id``.
             payload["_nid"] = _node_id(payload, addr)
             loop = asyncio.get_running_loop()
             loop.create_task(hub.ingest(payload))
@@ -452,7 +477,7 @@ def create_app(
 
     @app.websocket("/ws")
     async def ws_feed(ws: WebSocket) -> None:
-        # First frame is a full snapshot; later frames are per-packet ticks.
+        # First frame is a full snapshot. Later frames are per-packet ticks.
         await ws.accept()
         await hub.add(ws)
         try:
