@@ -2,7 +2,9 @@
 
 Passive floor-vibration fall detector. Hackathon prototype.
 
-The product node is a piezo puck bonded to the slab. This build uses iPhones on the floor as a proxy: accelerometer plus a sound-level meter, streamed to an **edge** process. A stub 1D CNN classifies each 2 s window. The **cloud** (`server/`) runs the escalation ladder. Telegram fires only after a gated fall. Raw vibration never leaves the edge.
+Layout: `src/` is code (`phone`, `edge`, `server`, `ml`, `tests`, `shared`). `docs/` is documentation. Data, `.env`, and this README stay at the repo root.
+
+The product node is a piezo puck bonded to the slab. This build uses iPhones on the floor as a proxy: accelerometer plus a sound-level meter, streamed to an **edge** process. A stub 1D CNN classifies each 2 s window. The **cloud** (`src/server/`) runs the escalation ladder. Telegram fires only after a gated fall. Raw vibration never leaves the edge.
 
 ```
 phone (UDP JSON :9000)  →  edge (:8000 HTTP + :9000 UDP)  →  cloud (:8001 HTTP)
@@ -11,7 +13,7 @@ phone (UDP JSON :9000)  →  edge (:8000 HTTP + :9000 UDP)  →  cloud (:8001 HT
                                  │  only if is_fall and         │  Telegram next of kin
                                  │  confidence ≥ 0.90           │  + Telegram senior (yes = ok)
                                  ▼                              ▼
-                          edge/data/inference.jsonl        DecisionTree
+                   src/edge/data/inference.jsonl           DecisionTree
 ```
 
 Swap `StubCnn` for a trained 1D CNN with the same `infer(window) -> InferenceResult` signature.
@@ -31,7 +33,7 @@ If the edge log does not print `[edge] UDP listening on 0.0.0.0:9000` and `[edge
 
 ---
 
-## Shared models (`shared/schemas.py`)
+## Shared models (`src/shared/schemas.py`)
 
 Pydantic models used on the wire and in logs. Extra keys on `SensorSample` are ignored.
 
@@ -77,7 +79,7 @@ Little-endian. Magic `OPYA`. UUID is 16 raw bytes (same id as JSON). Typical pay
 | 35 | 2 | n samples |
 | 37 | 2n | PCM s16le mono |
 
-Pack/unpack: `shared/pcm.py`. Join: `edge/pcm_ring.py` `slice_ms(t_start_ms, t_end_ms)`.
+Pack/unpack: `src/shared/pcm.py`. Join: `src/edge/pcm_ring.py` `slice_ms(t_start_ms, t_end_ms)`.
 
 ### `SensorWindow`
 
@@ -108,18 +110,18 @@ Same identity fields as inference, plus `threshold` (the gate, currently `0.90`)
 
 ## Phone
 
-Two producers: the iOS app and `phone/fake_phone.py`. JSON `SensorSample` on `:9000`; PCM frames on `:9001`.
+Two producers: the iOS app and `src/phone/fake_phone.py`. JSON `SensorSample` on `:9000`; PCM frames on `:9001`.
 
 **Input:** none from the network. Sensors only (CoreMotion 50 Hz + mic).
 
 **Output:** UDP JSON to `--host/--port` (default `127.0.0.1:9000`) and PCM to `port+1`. No HTTP API.
 
-### iOS (`phone/OpoyoPhone`)
+### iOS (`src/phone/ios/OpoyoPhone`)
 
 Needs Xcode, a paid team, and the phone on the same Wi-Fi or a personal hotspot.
 
 ```bash
-cd phone
+cd src/phone/ios
 xcodegen generate
 open OpoyoPhone.xcodeproj
 ```
@@ -130,12 +132,12 @@ If the phone is the hotspot, the Mac is almost always `172.20.10.11`. Campus Wi-
 
 `DeviceIdentity.nodeId` is a UUID stored on the device. That is `SensorSample.id`.
 
-### Fake sensors (`phone/fake_phone.py`)
+### Fake sensors (`src/phone/fake_phone.py`)
 
 Talks to the **edge UDP port**, not the cloud.
 
 ```bash
-python phone/fake_phone.py --nodes 1 --impact knee --seconds 8
+python -m phone.fake_phone --nodes 1 --impact knee --seconds 8
 ```
 
 | Flag | Meaning |
@@ -162,12 +164,12 @@ Packets do **not** carry a `knee`/`book` label. The waveform is how you tell sce
 Keep slots stable:
 
 ```bash
-python phone/fake_phone.py --nodes 2 --ids 11111111-1111-1111-1111-111111111111,22222222-2222-2222-2222-222222222222 --impact book --seconds 8
+python -m phone.fake_phone --nodes 2 --ids 11111111-1111-1111-1111-111111111111,22222222-2222-2222-2222-222222222222 --impact book --seconds 8
 ```
 
 ---
 
-## Edge (`edge/`)
+## Edge (`src/edge/`)
 
 FastAPI process. Default `http://0.0.0.0:8000` plus UDP `0.0.0.0:9000`.
 
@@ -186,13 +188,13 @@ FastAPI process. Default `http://0.0.0.0:8000` plus UDP `0.0.0.0:9000`.
 | UDP | `:9000` | JSON `SensorSample` | — (side effect: ingest) |
 | UDP | `:9001` | Binary `OPYA` PCM (16 kHz s16le) | — (side effect: ring + join on window) |
 
-No `POST /api/edge/config`. Threshold, window, hop, and cloud URL are constants in `edge/app.py`. No phone rename route.
+No `POST /api/edge/config`. Threshold, window, hop, and cloud URL are constants in `src/edge/app.py`. No phone rename route.
 
 `GET /api/state` / WS `k: "state"` include five slots (`empty` or live phone), `combined` (`mag`, `db`, `live`, `hz`, `packets`), `dropped` (6th+ UUIDs), and `inference.latest` / `inference.log`.
 
 WS `k: "tick"` is one sample plus `combined` and the current `inference` blob.
 
-### Constants (`edge/app.py`)
+### Constants (`src/edge/app.py`)
 
 ```
 ESCALATE_MIN_CONFIDENCE = 0.90
@@ -251,6 +253,12 @@ cp .env.example .env               # Windows: copy .env.example .env
 
 Fill Telegram / senior phone for live alerts. Keep `EDGE_ENABLE_UDP=1`. Do not commit `.env`.
 
+Install the packages from `src/` so `edge`, `server`, `train`, and `phone` import:
+
+```bash
+pip install -e .
+```
+
 Two terminals:
 
 ```bash
@@ -264,8 +272,8 @@ python -m uvicorn server.app:app --host 127.0.0.1 --port 8001
 Or FastAPI CLI (`pip install "fastapi[standard]"`):
 
 ```bash
-fastapi dev edge/app.py --host 0.0.0.0 --port 8000
-fastapi dev server/app.py --host 127.0.0.1 --port 8001
+fastapi dev src/edge/app.py --host 0.0.0.0 --port 8000
+fastapi dev src/server/app.py --host 127.0.0.1 --port 8001
 ```
 
 Open http://127.0.0.1:8000 and http://127.0.0.1:8001/health.
@@ -280,15 +288,15 @@ On boot the edge should print `[edge] UDP listening on 0.0.0.0:9000`. Then start
 pytest
 ```
 
-`tests/test_edge.py` boots a live edge, sends fake UDP, reads `/ws`, and writes `edge/data/inference.jsonl` (gitignored via `data/`).
+`src/tests/test_edge.py` boots a live edge, sends fake UDP, reads `/ws`, and writes `src/edge/data/inference.jsonl`.
 
 ---
 
 ## Also on this tree (from `main`)
 
-- `android/` collector APK (CSV share). Same floor job as iOS Collect.
-- `brand/` lockup and square mark. Edge dashboard uses `edge/static/logo.png`.
-- `opoyo/` and `scripts/record.py` are the older laptop kinematic pipeline. Live path is still edge → cloud.
+- `src/phone/android/` collector APK (CSV share). Same floor job as iOS Collect.
+- `src/edge/static/` dashboard assets (logo, batik).
+- `src/ml/` train, models, and scripts. Live path is still edge → cloud.
 
 ---
 

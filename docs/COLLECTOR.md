@@ -6,8 +6,8 @@ One event per file. You are recording **floor vibration**, not a movie of a fall
 
 No laptop. Phone **face-down** on hard tile, case off. Allow microphone.
 
-**iPhone:** rebuild `phone/OpoyoPhone` in Xcode.  
-**Android:** open `android/` in Android Studio, Run on the device.
+**iPhone:** rebuild `src/phone/ios/OpoyoPhone` in Xcode.  
+**Android:** open `src/phone/android/` in Android Studio, Run on the device.
 
 1. Open OPOYO. Pick a label (`heeldrop`, `bag`, `book`, …).
 2. Tap **Record**. Stand still 2 s.
