@@ -12,12 +12,18 @@ from typing import Protocol
 class Sender(Protocol):
     """Delivers a text payload to a destination identifier."""
 
-    def send(self, destination: str, message: str) -> bool:
+    def send(
+        self,
+        destination: str,
+        message: str,
+        reply_markup: dict | None = None,
+    ) -> bool:
         """Send ``message`` to ``destination``.
 
         Args:
             destination: Chat id, phone number, or other transport address.
             message: Already-formatted alert text.
+            reply_markup: Optional transport-specific keyboard / buttons.
 
         Returns:
             True if the transport accepted the message.

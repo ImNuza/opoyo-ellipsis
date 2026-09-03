@@ -12,6 +12,7 @@ from typing import Protocol
 from uuid import uuid4
 
 from server.adapters import Sender
+from server.adapters.telegram import senior_ack_markup
 from shared.schemas import AckEvent, EscalationCase, EscalationCommand, FallEvent
 
 
@@ -24,6 +25,7 @@ TERMINAL = frozenset(
     }
 )
 
+SENIOR_WAIT_S = 60.0
 FAMILY_WAIT_S = 60.0
 CARELINE_AT_S = 180.0
 
@@ -70,7 +72,8 @@ def senior_check_message(event: FallEvent) -> str:
     )
     return (
         f"OPOYO: possible fall. Room {event.room}. {ts}. "
-        f"Are you okay? Reply yes if everything is fine. "
+        f"Are you okay? Tap I'm fine or I need help "
+        f"(or reply yes / no). "
         f"confidence {event.confidence:.2f}."
     )
 
@@ -130,6 +133,7 @@ class DecisionTree:
             sender=self._telegram,
             destination=self._senior_chat_id,
             message=senior_check_message(event),
+            reply_markup=senior_ack_markup(case.case_id),
         )
         return case
 
@@ -171,6 +175,18 @@ class DecisionTree:
         t = self._clock.now() if now is None else now
         for case in list(self.cases.values()):
             if (
+                case.state == "rung1_dispatched"
+                and t - case.started_at_s >= SENIOR_WAIT_S
+            ):
+                self.on_ack(
+                    AckEvent(
+                        case_id=case.case_id,
+                        actor="senior",
+                        outcome="no_answer",
+                        timestamp=int(t * 1000),
+                    )
+                )
+            if (
                 case.state == "awaiting_family"
                 and case.family_wait_started_at is not None
                 and t - case.family_wait_started_at >= FAMILY_WAIT_S
@@ -206,6 +222,7 @@ class DecisionTree:
         sender: Sender,
         destination: str,
         message: str,
+        reply_markup: dict | None = None,
     ) -> None:
         cmd = EscalationCommand(
             case_id=case.case_id,
@@ -214,4 +231,4 @@ class DecisionTree:
             event=case.event,
         )
         case.commands.append(cmd)
-        sender.send(destination, message)
+        sender.send(destination, message, reply_markup=reply_markup)

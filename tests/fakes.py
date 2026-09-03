@@ -21,7 +21,14 @@ class FakeSender:
 
     def __init__(self) -> None:
         self.sent: list[tuple[str, str]] = []
+        self.markups: list[dict | None] = []
 
-    def send(self, destination: str, message: str) -> bool:
+    def send(
+        self,
+        destination: str,
+        message: str,
+        reply_markup: dict | None = None,
+    ) -> bool:
         self.sent.append((destination, message))
+        self.markups.append(reply_markup)
         return True

@@ -108,4 +108,5 @@ def test_fake_phone_over_threshold_triggers_telegram(tmp_path: Path):
     assert "OPOYO: fall" in family_text
     assert "Room 1" in family_text
     assert "0.95" in family_text
-    assert "Reply yes" in senior_text
+    assert "I'm fine" in senior_text
+    assert "reply yes" in senior_text

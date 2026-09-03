@@ -218,7 +218,7 @@ Change them in code and restart. `EDGE_ENABLE_UDP` in `.env` can force the UDP s
 
 FastAPI process. Default `http://127.0.0.1:8001`. No UDP. No dashboard.
 
-**In:** `FallEvent` and `AckEvent` JSON.
+**In:** `FallEvent` and `AckEvent` JSON. Senior **I'm fine** / **I need help** taps (and typed yes/no in the senior chat) are polled from Telegram on the 0.5 s tick — no webhook.
 
 **Out:** `EscalationCase` JSON; Telegram `sendMessage` to family, senior, and secondary. Twilio adapter exists but is unused.
 
@@ -227,14 +227,14 @@ FastAPI process. Default `http://127.0.0.1:8001`. No UDP. No dashboard.
 | Method | Path | Input | Output |
 |---|---|---|---|
 | `POST` | `/events` | `FallEvent` | `EscalationCase`, **202**. Dedupes on `event_id`. t+0: Telegram next of kin + Telegram senior check-in |
-| `POST` | `/cases/{case_id}/ack` | `AckEvent` (`case_id` in the path wins if it disagrees with the body). Senior `yes` closes as all-clear. | Updated case, or **404** |
+| `POST` | `/cases/{case_id}/ack` | `AckEvent` (`case_id` in the path wins if it disagrees with the body). Senior `yes` closes as all-clear. Optional; Telegram buttons do the same. | Updated case, or **404** |
 | `GET` | `/cases/{case_id}` | — | Current case, or **404** |
 | `GET` | `/health` | — | `{"ok": true}` |
 
-Startup starts a 0.5 s `on_tick` loop (not an HTTP route): after senior `no_answer` / `not_fine`, wait 60 s then Telegram secondary; CareLine stub at t+180.
+Startup starts a 0.5 s `on_tick` loop (not an HTTP route): polls Telegram `getUpdates` (skips backlog on boot); senior silence for 60 s becomes `no_answer`; after `no_answer` / `not_fine`, wait 60 s then Telegram secondary; CareLine stub at t+180.
 
 Family Telegram copy: `OPOYO: fall. Room {room}. {local time}. confidence {0.00}.`  
-Senior Telegram copy asks them to reply **yes** if they are fine.
+Senior Telegram copy asks them to tap **I'm fine** or **I need help** (or reply **yes** / **no**). Typed replies in the senior chat bind to the newest open check-in.
 
 `.env` for a live tree: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID_NEXT_OF_KIN`, `TELEGRAM_CHAT_ID_SECONDARY`, `TELEGRAM_CHAT_ID_SENIOR`.
 

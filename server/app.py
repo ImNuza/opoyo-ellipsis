@@ -11,9 +11,9 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 
-from server.adapters.telegram import Telegram
+from server.adapters.telegram import Telegram, TelegramAck
 from server.decision_tree import DecisionTree, SystemClock
-from shared.schemas import AckEvent, FallEvent
+from shared.schemas import AckEvent, EscalationCase, FallEvent
 
 
 def load_cloud_env() -> dict[str, str]:
@@ -43,6 +43,42 @@ def build_tree() -> DecisionTree:
     )
 
 
+def _newest_rung1(tree: DecisionTree) -> str | None:
+    """Newest open senior check-in. Used when the senior typed yes/no."""
+    open_cases = [
+        case
+        for case in tree.cases.values()
+        if case.state == "rung1_dispatched"
+    ]
+    if not open_cases:
+        return None
+    open_cases.sort(key=lambda c: c.started_at_s, reverse=True)
+    return open_cases[0].case_id
+
+
+def _apply_telegram_ack(
+    tree: DecisionTree,
+    telegram: Telegram,
+    item: TelegramAck,
+) -> EscalationCase | None:
+    """Bind a Telegram senior reply to a case and confirm back in-chat."""
+    case_id = item.case_id or _newest_rung1(tree)
+    if not case_id:
+        return None
+    case = tree.on_ack(item.to_ack(case_id=case_id))
+    if case is None:
+        return None
+    telegram.confirm_senior(item.chat_id, item.outcome)
+    if item.callback_query_id:
+        note = (
+            "Glad you're okay."
+            if item.outcome in {"yes", "fine"}
+            else "Help is on the way."
+        )
+        telegram.answer_callback(item.callback_query_id, note)
+    return case
+
+
 def create_app(tree: DecisionTree | None = None) -> FastAPI:
     """Build the FastAPI app.
 
@@ -53,9 +89,25 @@ def create_app(tree: DecisionTree | None = None) -> FastAPI:
     Returns:
         Configured FastAPI application.
     """
-    escalation = tree if tree is not None else build_tree()
+    live_telegram: Telegram | None = None
+    senior_chat_id = ""
+    if tree is None:
+        cfg = load_cloud_env()
+        live_telegram = Telegram(cfg["telegram_bot_token"])
+        senior_chat_id = cfg["senior_chat_id"] or ""
+        escalation = DecisionTree(
+            clock=SystemClock(),
+            telegram=live_telegram,
+            next_of_kin_chat_id=cfg["next_of_kin_chat_id"],
+            secondary_chat_id=cfg["secondary_chat_id"],
+            senior_chat_id=cfg["senior_chat_id"],
+        )
+    else:
+        escalation = tree
     app = FastAPI(title="OPOYO cloud")
     app.state.tree = escalation
+    app.state.telegram = live_telegram
+    app.state.senior_chat_id = senior_chat_id
 
     @app.post("/events")
     async def ingest_event(event: FallEvent) -> JSONResponse:
@@ -89,10 +141,18 @@ def create_app(tree: DecisionTree | None = None) -> FastAPI:
     @app.on_event("startup")
     async def _ticks() -> None:
         # Secondary Telegram at t+60 and CareLine stub at t+180 live here, not on a route.
+        # Senior button / text replies are polled from Telegram on the same tick.
         async def loop() -> None:
             while True:
                 await asyncio.sleep(0.5)
-                escalation.on_tick()
+                try:
+                    escalation.on_tick()
+                    inbox = app.state.telegram
+                    if inbox is not None and inbox.configured:
+                        for item in inbox.poll_acks(app.state.senior_chat_id or ""):
+                            _apply_telegram_ack(escalation, inbox, item)
+                except Exception:
+                    continue
 
         asyncio.create_task(loop())
 

@@ -1,6 +1,11 @@
 from __future__ import annotations
 
-from server.decision_tree import DecisionTree, fall_message, senior_check_message
+from server.decision_tree import (
+    SENIOR_WAIT_S,
+    DecisionTree,
+    fall_message,
+    senior_check_message,
+)
 from shared.schemas import AckEvent, FallEvent
 from tests.fakes import FakeClock, FakeSender
 
@@ -49,8 +54,19 @@ def test_ingest_dispatches_rung1():
     assert [dest for dest, _text in telegram.sent] == [KIN, SENIOR]
     assert "Room 1" in telegram.sent[0][1]
     assert "0.94" in telegram.sent[0][1]
-    assert "Reply yes" in telegram.sent[1][1]
+    assert "I'm fine" in telegram.sent[1][1]
+    assert "reply yes" in telegram.sent[1][1]
     assert telegram.sent[1][1] == senior_check_message(_event())
+    assert telegram.markups[0] is None
+    senior_markup = telegram.markups[1]
+    assert senior_markup is not None
+    data = {
+        btn["callback_data"]
+        for row in senior_markup["inline_keyboard"]
+        for btn in row
+    }
+    assert f"ack:{case.case_id}:yes" in data
+    assert f"ack:{case.case_id}:not_fine" in data
 
 
 def test_senior_yes_closes_and_blocks_later_rungs():
@@ -168,6 +184,21 @@ def test_ack_on_terminal_is_noop():
     )
     assert tree.cases[case.case_id].state == "false_alarm_closed"
     assert len(telegram.sent) == 2
+
+
+def test_senior_silence_becomes_no_answer():
+    tree, clock, telegram = _tree()
+    case = tree.ingest(_event())
+    clock.advance(SENIOR_WAIT_S - 1)
+    tree.on_tick()
+    assert tree.cases[case.case_id].state == "rung1_dispatched"
+    clock.advance(1)
+    tree.on_tick()
+    assert tree.cases[case.case_id].state == "awaiting_family"
+    clock.advance(60)
+    tree.on_tick()
+    assert tree.cases[case.case_id].state == "secondary_alerted"
+    assert len(telegram.sent) == 3
 
 
 def test_duplicate_event_id_does_not_start_second_case():
