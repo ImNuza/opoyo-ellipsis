@@ -11,7 +11,6 @@
     html, body { overflow-x: clip; }
     * { box-sizing: border-box; }
     html { color-scheme: light; }
-    html[data-theme="night"] { color-scheme: dark; }
     body {
       margin: 0;
       min-height: 100dvh;
@@ -76,7 +75,6 @@
     .wordmark span {
       font-size: 0.68rem;
       letter-spacing: 0.12em;
-      text-transform: none;
       color: var(--color-tan);
       white-space: nowrap;
       overflow: hidden;
@@ -103,12 +101,12 @@
       background: transparent;
       border-color: color-mix(in srgb, var(--color-on-header) 45%, transparent);
     }
-    button:hover, .btn:hover, button.is-hover, .btn.is-hover { background: var(--color-wax); }
+    button:hover, .btn:hover { background: var(--color-wax); }
     header.mast button:hover, header.mast .btn:hover {
       background: color-mix(in srgb, var(--color-on-header) 12%, transparent);
     }
     button:active, .btn:active { transform: translateY(1px); }
-    button[aria-pressed="true"], .btn.is-on {
+    button[aria-pressed="true"] {
       background: var(--color-tan);
       color: var(--color-navy);
       border-color: var(--color-tan);
@@ -124,11 +122,27 @@
       letter-spacing: 0.04em;
     }
     .note { color: var(--color-muted); font-size: var(--text-sm); margin: 0 0 var(--space-4); }
-    .plots {
+    .layout {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+      gap: var(--space-6);
+      align-items: stretch;
+    }
+    .stack {
+      display: flex;
+      flex-direction: column;
       gap: var(--space-5);
-      margin-bottom: var(--space-8);
+      min-width: 0;
+    }
+    .rail {
+      min-height: 0;
+      height: 100%;
+    }
+    .rail .log-block {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
     }
     figure { margin: 0; min-width: 0; display: flex; flex-direction: column; }
     figcaption {
@@ -145,33 +159,12 @@
       min-height: 168px;
     }
     canvas { width: 100%; height: 168px; display: block; }
-    .cards {
-      display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
-      gap: var(--space-3);
-    }
-    .card {
-      background: var(--color-resist);
-      border: var(--rule) solid var(--color-line);
-      padding: 14px;
-      min-width: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-    .card.empty { opacity: 0.55; }
-    .card h3 {
-      margin: 0;
-      font-size: 1rem;
-      font-style: normal;
-      font-weight: 600;
-      overflow-wrap: anywhere;
-    }
     .idline {
       font-family: var(--font-mono);
       font-size: 0.68rem;
       color: var(--color-muted);
       overflow-wrap: anywhere;
+      margin: 0 0 var(--space-3);
     }
     .chip {
       font-size: 0.65rem;
@@ -180,13 +173,14 @@
       color: var(--color-wait);
     }
     .chip[data-live="true"] { color: var(--color-live); }
-    .nums {
-      font-family: var(--font-mono);
-      font-variant-numeric: tabular-nums;
-      font-size: 0.78rem;
-      display: grid;
-      gap: 2px;
+    .phone-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: var(--space-3);
+      margin-bottom: var(--space-2);
     }
+    .phone-head h2 { margin: 0; }
     footer {
       display: flex;
       justify-content: space-between;
@@ -197,16 +191,6 @@
       font-size: var(--text-sm);
     }
     footer p { margin: 0; }
-    .page { display: none; }
-    .page.is-on { display: block; }
-    .qna h2 { margin-top: var(--space-6); }
-    .qna p, .qna li { max-width: 68ch; }
-    .qna code {
-      font-family: var(--font-mono);
-      font-size: 0.9em;
-      background: var(--color-wax);
-      padding: 0 4px;
-    }
     .banner {
       display: flex;
       align-items: center;
@@ -223,43 +207,42 @@
       font-weight: 600;
       letter-spacing: 0.04em;
     }
-    .banner[data-state="suspect"] {
-      background: var(--color-navy);
-      color: var(--color-on-header);
-      border-color: var(--color-navy);
-    }
-    .banner[data-state="confirmed"] {
-      background: var(--color-navy);
-      color: var(--color-tan);
-      border-color: var(--color-tan);
-    }
-    .banner[data-state="recovered"],
-    .banner[data-state="cancelled"] {
-      background: var(--color-wax);
-    }
     .banner[data-state="fall"] {
       background: var(--color-navy);
       color: var(--color-tan);
       border-color: var(--color-tan);
+    }
+    .log-scroll {
+      flex: 1;
+      min-height: 16rem;
+      overflow: auto;
+      border: var(--rule) solid var(--color-line);
+      background: var(--color-resist);
     }
     table.log {
       width: 100%;
       border-collapse: collapse;
       font-family: var(--font-mono);
       font-size: var(--text-sm);
-      margin: 0 0 var(--space-6);
+      margin: 0;
     }
     table.log th, table.log td {
       text-align: left;
       padding: 8px 10px;
       border-bottom: var(--rule) solid var(--color-line);
     }
-    .back { margin-bottom: var(--space-4); }
+    table.log thead th {
+      position: sticky;
+      top: 0;
+      background: var(--color-resist);
+      z-index: 1;
+    }
+    table.log tr.is-fall td { color: var(--color-navy); font-weight: 600; }
     .detail-meta {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: var(--space-3);
-      margin-bottom: var(--space-5);
+      margin: 0;
     }
     .detail-meta div {
       background: var(--color-resist);
@@ -277,15 +260,22 @@
       font-family: var(--font-mono);
       font-size: var(--text-xl);
     }
+    .phone-model {
+      margin: 0;
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 1.05rem;
+    }
+    .phone-panel.empty { opacity: 0.7; }
     @media (max-width: 1100px) {
-      .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .plots { grid-template-columns: 1fr; }
-      .detail-meta { grid-template-columns: 1fr 1fr; }
+      .layout { grid-template-columns: 1fr; }
+      .log-scroll { min-height: 22rem; max-height: 34.5rem; }
+      .detail-meta { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
     @media (max-width: 768px) {
       header.mast, main, footer { padding-left: var(--space-4); padding-right: var(--space-4); }
-      .cards { grid-template-columns: 1fr; }
       .wordmark strong { font-size: 1.2rem; overflow-wrap: anywhere; min-width: 0; }
+      .detail-meta { grid-template-columns: 1fr; }
     }
     @media (prefers-reduced-motion: reduce) {
       button, .btn { transition: none; }
@@ -303,53 +293,40 @@
         </div>
       </a>
       <div class="actions">
-        <a class="btn" id="qnaBtn" href="#/qna">QnA</a>
         <button type="button" id="pause" aria-pressed="false">Pause</button>
-        <button type="button" id="theme">Night</button>
       </div>
     </header>
 
     <main>
-      <section id="home" class="page is-on">
-        <div class="banner" id="banner" data-state="quiet">
-          <strong id="bannerText">No inference yet</strong>
-        </div>
-        <h2>Combined floor</h2>
-        <p class="note" id="comboNote">Max magnitude and max sound across live phones. x, y, z stay per phone.</p>
-        <div class="plots">
+      <div class="banner" id="banner" data-state="quiet">
+        <strong id="bannerText">No inference yet</strong>
+      </div>
+      <div class="layout">
+        <section class="stack phone-panel" id="phonePanel" aria-label="Live readings">
+          <h2>Live Readings:</h2>
+          <div class="phone-head">
+            <p class="phone-model" id="phoneTitle">Waiting for phone</p>
+            <div class="chip" id="phoneLive" data-live="false">Waiting</div>
+          </div>
+          <p class="idline" id="phoneId">Empty slot</p>
+          <div class="detail-meta">
+            <div><dt>Magnitude</dt><dd id="pMag">-</dd></div>
+            <div><dt>Sound</dt><dd id="pDb">-</dd></div>
+            <div><dt>Rate</dt><dd id="pHz">-</dd></div>
+            <div><dt>Packets</dt><dd id="pN">-</dd></div>
+          </div>
           <figure>
-            <figcaption>Combined magnitude (g)</figcaption>
-            <div class="chart-wrap"><canvas id="comboMag" width="900" height="220" aria-label="Combined acceleration"></canvas></div>
+            <figcaption>Magnitude (g)</figcaption>
+            <div class="chart-wrap"><canvas id="comboMag" width="900" height="220" aria-label="Magnitude"></canvas></div>
           </figure>
           <figure>
-            <figcaption>Combined sound (dB)</figcaption>
-            <div class="chart-wrap"><canvas id="comboDb" width="900" height="220" aria-label="Combined sound"></canvas></div>
+            <figcaption>Sound (dB)</figcaption>
+            <div class="chart-wrap"><canvas id="comboDb" width="900" height="220" aria-label="Sound"></canvas></div>
           </figure>
-        </div>
-        <h2>Inference log</h2>
-        <p class="note">Every 1D CNN window. Raw vibration stays on this edge process.</p>
-        <table class="log" id="inferLog">
-          <thead>
-            <tr><th>timestamp</th><th>room</th><th>fall or no fall</th><th>confidence</th></tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-        <h2>Phones</h2>
-        <p class="note">Five slots. Join order names the card. Rename sticks to the phone id after quit.</p>
-        <div class="cards" id="cards"></div>
-      </section>
-
-      <section id="phone" class="page">
-        <p><a class="btn back" href="#/">Back</a></p>
-        <h2 id="phoneTitle">Phone</h2>
-        <p class="idline" id="phoneId">-</p>
-        <div class="detail-meta">
-          <div><dt>Magnitude</dt><dd id="pMag">-</dd></div>
-          <div><dt>Sound</dt><dd id="pDb">-</dd></div>
-          <div><dt>Rate</dt><dd id="pHz">-</dd></div>
-          <div><dt>Packets</dt><dd id="pN">-</dd></div>
-        </div>
-        <div class="plots">
+          <figure>
+            <figcaption>Frequency (Hz)</figcaption>
+            <div class="chart-wrap"><canvas id="comboFreq" width="900" height="220" aria-label="Frequency spectrum"></canvas></div>
+          </figure>
           <figure>
             <figcaption>ax (g)</figcaption>
             <div class="chart-wrap"><canvas id="cAx" width="900" height="220" aria-label="ax"></canvas></div>
@@ -362,68 +339,23 @@
             <figcaption>az (g)</figcaption>
             <div class="chart-wrap"><canvas id="cAz" width="900" height="220" aria-label="az"></canvas></div>
           </figure>
-          <figure>
-            <figcaption>Magnitude (g)</figcaption>
-            <div class="chart-wrap"><canvas id="cMag" width="900" height="220" aria-label="magnitude"></canvas></div>
-          </figure>
-          <figure>
-            <figcaption>Sound (dB)</figcaption>
-            <div class="chart-wrap"><canvas id="cDb" width="900" height="220" aria-label="sound"></canvas></div>
-          </figure>
-        </div>
-      </section>
+        </section>
 
-      <section id="qna" class="page qna">
-        <p><a class="btn back" href="#/">Back</a></p>
-        <h2>What this is</h2>
-        <p>OPOYO is a floor-vibration fall detector. The product is a piezo puck bonded to a slab. This build is the proxy: iPhones on the floor send user-acceleration and a sound-level number to a Mac dashboard.</p>
-        <h2>How the pipe works</h2>
-        <ol>
-          <li>Each phone samples CoreMotion user-acceleration at 50 Hz and microphone RMS as dB.</li>
-          <li>A JSON packet goes over UDP to the Mac on port 9000. Audio samples never leave the phone. Only one dB number does.</li>
-          <li>The Mac keeps up to five phones, keyed by a UUID created on first launch.</li>
-          <li>This page shows the combined floor, then one screen per phone so a judge can see that each device is sending.</li>
-        </ol>
-        <h2>Formulas</h2>
-        <p>User acceleration is gravity-removed, in g.</p>
-        <p><code>mag = sqrt(ax² + ay² + az²)</code></p>
-        <p><code>dB = 20 · log10(max(rms, 1e-8))</code></p>
-        <p>Combined magnitude at a tick is the maximum <code>mag</code> among phones that sent a packet in the last 2.5 s. Combined sound is the maximum dB. Axes are not averaged. Each phone has its own heading.</p>
-        <h2>Identity</h2>
-        <p>A phone is not identified by MAC address. iOS will not give that to the app. The stable key is a UUID stored on the phone. The card shows the model, a four-character short id, and a slot name <code>Phone 1</code> … <code>Phone 5</code>.</p>
-        <h2>Edge inference (this process, not the browser)</h2>
-        <p>UDP packets land here. A 2 s window of magnitude is passed to a 1D CNN stub in <code>edge/infer.py</code>. The stub returns <code>timestamp, is_fall, confidence</code>. Every result is logged. The cloud is contacted only when <code>is_fall</code> and confidence ≥ <code>ESCALATE_MIN_CONFIDENCE</code> (0.90 in <code>edge/app.py</code>).</p>
-        <p><code>InferenceResult</code>: <code>inference_id, timestamp, node_id</code> (<code>Phone 1</code> … <code>Phone 5</code>), <code>room</code> (1–5), <code>is_fall, confidence</code></p>
-        <p><code>FallEvent</code> (cloud only): same fields plus <code>threshold</code>, and <code>is_fall</code> is always true.</p>
-        <h2>Telegram</h2>
-        <p>The cloud process owns the escalation ladder. At t+0 after a gated fall it Telegrams next of kin and the senior. Twilio is not on the live path; the adapter remains for a future voice plug-in.</p>
-        <ul>
-          <li>t+0: Telegram next of kin (<code>TELEGRAM_CHAT_ID_NEXT_OF_KIN</code>) and Telegram senior (<code>TELEGRAM_CHAT_ID_SENIOR</code>) asking them to reply yes if they are okay.</li>
-          <li>Senior “yes” closes the case as all-clear. Otherwise wait 60 s, then Telegram secondary (<code>TELEGRAM_CHAT_ID_SECONDARY</code>), then CareLine at t+180.</li>
-        </ul>
-        <h2>Phone keep-awake</h2>
-        <p>iOS will not stream CoreMotion or mic in the background. Streaming turns the idle timer off. A Keep screen awake toggle keeps it off after Stop. That is the Friday path: face-down, screen on.</p>
-        <h2>Limits</h2>
-        <ul>
-          <li>This is a phone-on-tile proxy, not a bonded piezo.</li>
-          <li>Campus Wi-Fi often blocks phone-to-laptop UDP. Personal hotspot is the trusted demo network.</li>
-          <li>A sixth phone is dropped.</li>
-          <li>No labelled fall corpus. The live classifier is a stub that always returns no-fall.</li>
-          <li>Escalate threshold is calibrated in the field. Default 0.90.</li>
-        </ul>
-        <h2>Tweak</h2>
-        <p>Threshold, window, hop, and cloud URL are constants in <code>edge/app.py</code>. Restart the edge process after changing them.</p>
-        <p>Code: <code>edge/infer.py</code> (stub), <code>edge/gate.py</code> (threshold), <code>server/tree.py</code> (ladder), <code>server/notify.py</code> (Telegram copy).</p>
-        <h2>Not done yet</h2>
-        <ul>
-          <li>Trained 1D-CNN weights behind the same <code>infer(window)</code> signature.</li>
-          <li>YAMNet acoustic veto.</li>
-          <li>Wire Twilio voice using the existing <code>server.adapters.twilio</code> Sender.</li>
-          <li>Live CareLine adapter.</li>
-          <li>True background streaming. iOS will not do that honestly.</li>
-          <li>Piezo puck hardware.</li>
-        </ul>
-      </section>
+        <section class="stack rail" aria-label="Live inference">
+          <div class="log-block">
+            <h2>Live inference</h2>
+            <p class="note" id="comboNote">Newest 15 rows in view. Scroll for the rest.</p>
+            <div class="log-scroll" id="inferScroll">
+              <table class="log" id="inferLog">
+                <thead>
+                  <tr><th>timestamp</th><th>room</th><th>fall or no fall</th><th>confidence</th></tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </div>
     </main>
 
     <footer>
@@ -434,6 +366,8 @@
   <script>
     const MAX = 220;
     const PAD = { l: 44, r: 10, t: 10, b: 22 };
+    const SAMPLE_HZ = 50;
+    const LOG_VIEW = 15;
     const comboMagBuf = [];
     const comboDbBuf = [];
     const nodes = {};
@@ -441,17 +375,15 @@
     let paused = false;
     let dropped = 0;
     let combined = { mag: 0, db: -120, live: 0, hz: 0, packets: 0 };
-    let lastRecv = 0;
     let inference = { latest: null, log: [], cfg: { escalate_min_confidence: 0.9 } };
 
     const pauseBtn = document.getElementById("pause");
-    const themeBtn = document.getElementById("theme");
-    const cardsEl = document.getElementById("cards");
     const footEl = document.getElementById("foot");
     const comboNote = document.getElementById("comboNote");
     const bannerEl = document.getElementById("banner");
     const bannerText = document.getElementById("bannerText");
     const inferLogBody = document.querySelector("#inferLog tbody");
+    const phonePanel = document.getElementById("phonePanel");
 
     function ink() {
       return getComputedStyle(document.body).getPropertyValue("--color-navy").trim() || "#1e3a5f";
@@ -469,18 +401,6 @@
       return getComputedStyle(document.body).getPropertyValue("--color-line").trim() || "#d8d0c4";
     }
 
-    function applyTheme(name) {
-      const night = name === "night";
-      document.documentElement.setAttribute("data-theme", night ? "night" : "cloth");
-      themeBtn.textContent = night ? "Cloth" : "Night";
-      try { localStorage.setItem("opoyo-theme", night ? "night" : "cloth"); } catch (e) {}
-    }
-    applyTheme((() => {
-      try { return localStorage.getItem("opoyo-theme") || "cloth"; } catch (e) { return "cloth"; }
-    })());
-    themeBtn.addEventListener("click", () => {
-      applyTheme(document.documentElement.getAttribute("data-theme") === "night" ? "cloth" : "night");
-    });
     pauseBtn.addEventListener("click", () => {
       paused = !paused;
       pauseBtn.setAttribute("aria-pressed", paused ? "true" : "false");
@@ -500,8 +420,13 @@
       }
       return nodes[id];
     }
+    function phone1() {
+      return slots.find((s) => s && !s.empty && s.slot === 1)
+        || slots.find((s) => s && !s.empty)
+        || null;
+    }
 
-    function draw(canvas, values, min, max, stroke, unit, thresh) {
+    function draw(canvas, values, min, max, stroke, unit) {
       const ctx = canvas.getContext("2d");
       const w = canvas.width;
       const h = canvas.height;
@@ -535,103 +460,129 @@
       ctx.strokeStyle = stroke;
       ctx.lineWidth = 1.6;
       ctx.stroke();
-      if (typeof thresh === "number" && isFinite(thresh) && thresh > min && thresh < max) {
-        const y = PAD.t + innerH - ((thresh - min) / (max - min || 1)) * innerH;
+    }
+
+    function spectrum(buf, hz) {
+      const nWant = 128;
+      if (!buf.length || buf.length < 16) return { spec: [], freqs: [] };
+      const slice = buf.slice(-Math.min(buf.length, nWant));
+      const n = slice.length;
+      let mean = 0;
+      for (let i = 0; i < n; i++) mean += slice[i];
+      mean /= n;
+      const half = Math.floor(n / 2);
+      const spec = [];
+      const freqs = [];
+      for (let k = 0; k <= half; k++) {
+        let re = 0;
+        let im = 0;
+        for (let i = 0; i < n; i++) {
+          const ang = (-2 * Math.PI * k * i) / n;
+          const v = slice[i] - mean;
+          re += v * Math.cos(ang);
+          im += v * Math.sin(ang);
+        }
+        spec.push(Math.hypot(re, im) / n);
+        freqs.push((k * hz) / n);
+      }
+      return { spec, freqs };
+    }
+
+    function drawSpectrum(canvas, spec, freqs) {
+      const ctx = canvas.getContext("2d");
+      const w = canvas.width;
+      const h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+      const innerW = w - PAD.l - PAD.r;
+      const innerH = h - PAD.t - PAD.b;
+      const max = Math.max(0.001, ...spec, 0.001);
+      ctx.strokeStyle = line();
+      ctx.lineWidth = 1;
+      ctx.fillStyle = muted();
+      ctx.font = "11px ui-monospace, SF Mono, Menlo, monospace";
+      const ticks = 4;
+      for (let i = 0; i <= ticks; i++) {
+        const frac = i / ticks;
+        const y = PAD.t + innerH * (1 - frac);
         ctx.beginPath();
-        ctx.setLineDash([5, 4]);
-        ctx.strokeStyle = tan();
-        ctx.lineWidth = 1;
         ctx.moveTo(PAD.l, y);
         ctx.lineTo(w - PAD.r, y);
         ctx.stroke();
-        ctx.setLineDash([]);
-        ctx.fillStyle = muted();
-        ctx.fillText(thresh.toFixed(2), w - PAD.r - 36, y - 4);
+        ctx.fillText((max * frac).toFixed(3), 4, y + 3);
       }
+      const fMax = freqs.length ? freqs[freqs.length - 1] : SAMPLE_HZ / 2;
+      ctx.fillText("0", PAD.l, h - 6);
+      ctx.fillText(fMax.toFixed(0) + " Hz", w - PAD.r - 48, h - 6);
+      if (spec.length < 2) return;
+      ctx.beginPath();
+      spec.forEach((v, i) => {
+        const x = PAD.l + (i / (spec.length - 1)) * innerW;
+        const y = PAD.t + innerH - (v / max) * innerH;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.strokeStyle = teal();
+      ctx.lineWidth = 1.6;
+      ctx.stroke();
     }
 
     function magScale(buf) {
       return Math.max(0.4, ...buf, 0.4);
     }
 
-    function route() {
-      const hash = location.hash || "#/";
-      const home = document.getElementById("home");
-      const phone = document.getElementById("phone");
-      const qna = document.getElementById("qna");
-      home.classList.remove("is-on");
-      phone.classList.remove("is-on");
-      qna.classList.remove("is-on");
-      if (hash.startsWith("#/qna")) {
-        qna.classList.add("is-on");
+    function drawFloor() {
+      const buf = phone1Buf();
+      const mag = buf && buf.mag.length ? buf.mag : comboMagBuf;
+      const db = buf && buf.db.length ? buf.db : comboDbBuf;
+      draw(document.getElementById("comboMag"), mag, 0, magScale(mag), ink(), "g");
+      draw(document.getElementById("comboDb"), db, -80, 0, tan(), "dB");
+      const { spec, freqs } = spectrum(mag, SAMPLE_HZ);
+      drawSpectrum(document.getElementById("comboFreq"), spec, freqs);
+    }
+
+    function phone1Buf() {
+      const slot = phone1();
+      if (!slot || !slot.id) return null;
+      return ensure(slot.id);
+    }
+
+    function renderPhone1() {
+      const slot = phone1();
+      const buf = slot && slot.id ? ensure(slot.id) : { ax: [], ay: [], az: [], mag: [], db: [], meta: {} };
+      if (!slot) {
+        phonePanel.classList.add("empty");
+        document.getElementById("phoneTitle").textContent = "Waiting for phone";
+        document.getElementById("phoneLive").textContent = "Waiting";
+        document.getElementById("phoneLive").setAttribute("data-live", "false");
+        document.getElementById("phoneId").textContent = "Empty slot";
+        document.getElementById("pMag").textContent = "-";
+        document.getElementById("pDb").textContent = "-";
+        document.getElementById("pHz").textContent = "-";
+        document.getElementById("pN").textContent = "-";
+        draw(document.getElementById("cAx"), [], -0.4, 0.4, ink(), "g");
+        draw(document.getElementById("cAy"), [], -0.4, 0.4, teal(), "g");
+        draw(document.getElementById("cAz"), [], -0.4, 0.4, tan(), "g");
         return;
       }
-      if (hash.startsWith("#/phone/")) {
-        phone.classList.add("is-on");
-        renderPhone(hash.slice(8));
-        return;
-      }
-      home.classList.add("is-on");
-    }
-
-    function renderCards() {
-      const parts = [];
-      for (let i = 0; i < 5; i++) {
-        const slot = slots[i] || { slot: i + 1, empty: true };
-        if (slot.empty) {
-          parts.push(
-            `<article class="card empty"><div class="chip">Waiting</div><h3>Phone ${i + 1}</h3><p class="idline">Empty slot</p></article>`
-          );
-          continue;
-        }
-        const live = slot.live ? "true" : "false";
-        parts.push(
-          `<article class="card">
-            <div class="chip" data-live="${live}">${slot.live ? "Live" : "Waiting"}</div>
-            <h3>${escapeHtml(slot.name || "Phone " + slot.slot)}</h3>
-            <p class="idline">${escapeHtml(slot.model || "iPhone")} · ${escapeHtml(slot.short || "")}</p>
-            <div class="nums">
-              mag ${fmt(slot.mag, 3)} g<br>
-              sound ${fmt(slot.db, 1)} dB<br>
-              ax ${fmt(slot.ax, 3)} g · ay ${fmt(slot.ay, 3)} g · az ${fmt(slot.az, 3)} g<br>
-              ${fmt(slot.hz, 1)} Hz · ${slot.packets || 0} pkt
-            </div>
-            <a class="btn" href="#/phone/${encodeURIComponent(slot.id)}">Open</a>
-          </article>`
-        );
-      }
-      cardsEl.innerHTML = parts.join("");
-    }
-
-    function escapeHtml(s) {
-      return String(s).replace(/[&<>"']/g, (c) => ({
-        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
-      }[c]));
-    }
-
-    function renderPhone(id) {
-      const slot = slots.find((s) => s && s.id === id);
-      const buf = ensure(id);
-      const name = (slot && slot.name) || buf.meta.name || "Phone";
-      document.getElementById("phoneTitle").textContent = name;
-      const model = (slot && slot.model) || buf.meta.model || "iPhone";
-      const short = (slot && slot.short) || buf.meta.short || "";
-      const from = (slot && slot.from) || buf.meta.from || "";
-      document.getElementById("phoneId").textContent = model + " · " + short + (from ? " · " + from : "");
-      const mag = slot ? slot.mag : buf.mag[buf.mag.length - 1];
-      const db = slot ? slot.db : buf.db[buf.db.length - 1];
-      document.getElementById("pMag").textContent = fmt(mag, 3) + " g";
-      document.getElementById("pDb").textContent = fmt(db, 1) + " dB";
-      document.getElementById("pHz").textContent = fmt(slot ? slot.hz : 0, 1) + " Hz";
-      document.getElementById("pN").textContent = String((slot && slot.packets) || 0);
+      phonePanel.classList.remove("empty");
+      const model = slot.model || buf.meta.model || "iPhone";
+      const short = slot.short || buf.meta.short || "";
+      const from = slot.from || buf.meta.from || "";
+      const name = slot.name || "Phone 1";
+      document.getElementById("phoneTitle").textContent = model;
+      document.getElementById("phoneLive").textContent = slot.live ? "Live" : "Waiting";
+      document.getElementById("phoneLive").setAttribute("data-live", slot.live ? "true" : "false");
+      document.getElementById("phoneId").textContent = name + (short ? " · " + short : "") + (from ? " · " + from : "");
+      document.getElementById("pMag").textContent = fmt(slot.mag, 3) + " g";
+      document.getElementById("pDb").textContent = fmt(slot.db, 1) + " dB";
+      document.getElementById("pHz").textContent = fmt(slot.hz, 1) + " Hz";
+      document.getElementById("pN").textContent = String(slot.packets || 0);
       const axMax = Math.max(0.4, ...buf.ax.map(Math.abs), 0.4);
       const ayMax = Math.max(0.4, ...buf.ay.map(Math.abs), 0.4);
       const azMax = Math.max(0.4, ...buf.az.map(Math.abs), 0.4);
       draw(document.getElementById("cAx"), buf.ax, -axMax, axMax, ink(), "g");
       draw(document.getElementById("cAy"), buf.ay, -ayMax, ayMax, teal(), "g");
       draw(document.getElementById("cAz"), buf.az, -azMax, azMax, tan(), "g");
-      draw(document.getElementById("cMag"), buf.mag, 0, magScale(buf.mag), ink(), "g");
-      draw(document.getElementById("cDb"), buf.db, -80, 0, tan(), "dB");
     }
 
     function applyInference(d) {
@@ -650,13 +601,19 @@
       }
       const thresh = d.cfg && d.cfg.escalate_min_confidence;
       footEl.textContent = "Dropped extras: " + dropped + ". Threshold: " + (typeof thresh === "number" ? thresh.toFixed(2) : "-") + ".";
+      const rows = (d.log || []).slice().reverse();
       inferLogBody.innerHTML = "";
-      (d.log || []).slice().reverse().forEach((row) => {
+      rows.forEach((row) => {
         const tr = document.createElement("tr");
+        if (row.is_fall) tr.className = "is-fall";
         const when = row.timestamp ? new Date(row.timestamp).toISOString().replace("T", " ").slice(0, 19) : "-";
         tr.innerHTML = "<td>" + when + "</td><td>" + (row.room || "-") + "</td><td>" + (row.is_fall ? "fall" : "no fall") + "</td><td>" + Number(row.confidence).toFixed(2) + "</td>";
         inferLogBody.appendChild(tr);
       });
+      const extra = Math.max(0, rows.length - LOG_VIEW);
+      comboNote.textContent = rows.length
+        ? (extra ? "Newest " + LOG_VIEW + " in view · " + extra + " older below." : rows.length + " recent windows.")
+        : "No windows yet.";
     }
 
     function applyState(s) {
@@ -684,18 +641,13 @@
           comboDbBuf.push(r.db);
         });
       }
-      renderCards();
-      draw(document.getElementById("comboMag"), comboMagBuf, 0, magScale(comboMagBuf), ink(), "g");
-      draw(document.getElementById("comboDb"), comboDbBuf, -80, 0, tan(), "dB");
-      comboNote.textContent = (combined.live || 0) + " live · combined " + fmt(combined.mag, 3) + " g · " + fmt(combined.db, 1) + " dB · " + fmt(combined.hz, 1) + " Hz";
+      drawFloor();
+      renderPhone1();
       if (!s.inference) footEl.textContent = "Dropped extras: " + dropped + ".";
-      const hash = location.hash || "#/";
-      if (hash.startsWith("#/phone/")) renderPhone(hash.slice(8));
     }
 
     function onTick(p) {
       if (paused || !p || !p.id) return;
-      lastRecv = performance.now();
       const buf = ensure(p.id);
       buf.meta = { name: p.name, model: p.model, short: p.short, from: p.from };
       pushBuf(buf.ax, p.ax);
@@ -722,12 +674,28 @@
         existing.model = p.model;
         existing.short = p.short;
         existing.from = p.from;
+      } else if (p.slot === 1 || !slots.some((s) => s && !s.empty)) {
+        slots = [{
+          slot: 1,
+          empty: false,
+          id: p.id,
+          live: true,
+          ax: p.ax,
+          ay: p.ay,
+          az: p.az,
+          mag: p.mag,
+          db: p.db,
+          hz: p.hz,
+          packets: p.packets,
+          name: p.name || "Phone 1",
+          model: p.model,
+          short: p.short,
+          from: p.from,
+        }];
       }
-      draw(document.getElementById("comboMag"), comboMagBuf, 0, magScale(comboMagBuf), ink(), "g");
-      draw(document.getElementById("comboDb"), comboDbBuf, -80, 0, tan(), "dB");
-      comboNote.textContent = (combined.live || 0) + " live · combined " + fmt(combined.mag, 3) + " g · " + fmt(combined.db, 1) + " dB · " + fmt(combined.hz, 1) + " Hz";
+      drawFloor();
+      renderPhone1();
       if (p.inference) applyInference(p.inference);
-      if ((location.hash || "#/").startsWith("#/phone/" + p.id)) renderPhone(p.id);
     }
 
     function connect() {
@@ -744,8 +712,6 @@
       ws.onclose = () => setTimeout(connect, 1000);
     }
 
-    window.addEventListener("hashchange", route);
-    route();
     connect();
 
     setInterval(async () => {
